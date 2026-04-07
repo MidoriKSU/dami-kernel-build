@@ -84,15 +84,15 @@ jobs:
               exit 0
           fi
           export LD_PRELOAD="$(pwd)/libfakestat.so $(pwd)/libfaketimeMT.so"
-          export FAKESTAT="2026-02-02 02:02:02"
-          export FAKETIME="@2026-02-02 02:02:02"
+          export FAKESTAT="2025-11-26 11:16:14"
+          export FAKETIME="@2025-11-26 11:16:14"
           exec "$WORKDIR/kernel_workspace/clang19/bin/clang" "$@"
           EOF
           chmod +x cc-wrapper
 
           export KBUILD_BUILD_USER="kleaf"
           export KBUILD_BUILD_HOST="build-host"
-          export KBUILD_BUILD_TIMESTAMP="Mon Feb 02 02:02:02 JST 2026"
+          export KBUILD_BUILD_TIMESTAMP="Wed Nov 26 11:16:14 UTC 2025"
           export ARCH=arm64
           export LLVM=1
           export LLVM_IAS=1

@@ -16,7 +16,7 @@ on:
       sub_level:
         description: 'Kernel sublevel'
         required: true
-        default: '69'
+        default: '23'
         type: string
       create_release:
         description: 'Publish a GitHub Release'

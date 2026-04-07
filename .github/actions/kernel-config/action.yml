@@ -24,7 +24,7 @@ runs:
         DEFCONFIG="${{ inputs.defconfig_path }}"
         
         sed -i '/CONFIG_LOCALVERSION/d' $DEFCONFIG
-        echo 'CONFIG_LOCALVERSION="-android16-5-gki-midori-build-4k"' >> $DEFCONFIG
+        echo 'CONFIG_LOCALVERSION="-android16-5-g5a0e85dd9db0-ab14499855-4k"' >> $DEFCONFIG
 
         cat >> $DEFCONFIG <<-'EOF'
         # Core Bootability & Performance
