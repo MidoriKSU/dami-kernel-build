@@ -1,4 +1,4 @@
-name: 'Inject  Kernel Configs'
+name: 'Inject Kernel Configs'
 description: 'Applies standard networking, performance, and KSU flags'
 inputs:
   defconfig_path:
@@ -8,7 +8,7 @@ inputs:
     description: 'Path to the build.config.gki file'
     required: true
   variant:
-    description: 'KSU variant (kowsu, xxksu, kowsu+susfs)'
+    description: 'KSU variant'
     required: true
   enable_susfs:
     description: 'Set to "true" to inject SuSFS configs'
@@ -23,9 +23,8 @@ runs:
       run: |
         DEFCONFIG="${{ inputs.defconfig_path }}"
         
-        # Ensure localversion matches original working build
         sed -i '/CONFIG_LOCALVERSION/d' $DEFCONFIG
-        echo 'CONFIG_LOCALVERSION="-android16-5-g6928909e3148-abogki444322847-4k"' >> $DEFCONFIG
+        echo 'CONFIG_LOCALVERSION="-android16-5-gki-midori-build-4k"' >> $DEFCONFIG
 
         cat >> $DEFCONFIG <<-'EOF'
         # Core Bootability & Performance
@@ -81,14 +80,14 @@ runs:
         EOF
 
         # Variant-Specific KSU Logic
-        if [ "${{ inputs.variant }}" = "xxksu" ]; then
+        if [ "${{ inputs.variant }}" = "MidoriXX" ]; then
           cat >> $DEFCONFIG <<-'EOF'
         CONFIG_KSU=y
         CONFIG_KSU_EXTRAS=y
         CONFIG_KSU_LSM_SECURITY_HOOKS=n
         CONFIG_KSU_TAMPER_SYSCALL_TABLE=n
         EOF
-        elif [[ "${{ inputs.variant }}" == *"kowsu"* ]]; then
+        elif [[ "${{ inputs.variant }}" == *"MidoriSU"* ]]; then
           cat >> $DEFCONFIG <<-'EOF'
         CONFIG_KSU=y
         CONFIG_KPROBES=y

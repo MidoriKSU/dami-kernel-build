@@ -1,4 +1,5 @@
-name:  Build GKI  Popsicle (SM8850)
+name: Build GKI for Nezha
+
 on:
   workflow_dispatch:
     inputs:
@@ -9,13 +10,13 @@ on:
         type: choice
         options:
           - all
-          - kowsu+susfs
-          - kowsu
-          - xxksu
+          - MidoriSU-SuSFS
+          - MidoriSU
+          - MidoriXX
       sub_level:
-        description: 'Kernel sublevel (e.g. 23 for 6.12.23)'
+        description: 'Kernel sublevel'
         required: true
-        default: '23'
+        default: '69'
         type: string
       create_release:
         description: 'Publish a GitHub Release'
@@ -28,94 +29,56 @@ permissions:
   packages: write
 
 jobs:
-  # 
-  # 1  SETUP
-  # 
   setup:
-    name:  Setup  Resolve Build Config
     runs-on: ubuntu-latest
     outputs:
-      release_tag:       ${{ steps.config.outputs.release_tag }}
-      kernel_ver:        ${{ steps.config.outputs.kernel_ver }}
-      build_kowsu_susfs: ${{ steps.config.outputs.build_kowsu_susfs }}
-      build_kowsu:       ${{ steps.config.outputs.build_kowsu }}
-      build_xxksu:       ${{ steps.config.outputs.build_xxksu }}
+      release_tag: ${{ steps.config.outputs.release_tag }}
     steps:
       - id: config
-        name: Resolve variant flags & release tag
-        run: |
-          TAG=$(date +'%y%m%d')
-          echo "release_tag=${TAG}"                       >> $GITHUB_OUTPUT
-          echo "kernel_ver=6.12.${{ inputs.sub_level }}" >> $GITHUB_OUTPUT
+        run: echo "release_tag=$(date +'%y%m%d')" >> $GITHUB_OUTPUT
 
-          VARIANT="${{ inputs.ksu_variant }}"
-
-          if [[ "$VARIANT" == "all" || "$VARIANT" == "kowsu+susfs" ]]; then
-            echo "build_kowsu_susfs=true"  >> $GITHUB_OUTPUT
-          else
-            echo "build_kowsu_susfs=false" >> $GITHUB_OUTPUT
-          fi
-
-          if [[ "$VARIANT" == "all" || "$VARIANT" == "kowsu" ]]; then
-            echo "build_kowsu=true"        >> $GITHUB_OUTPUT
-          else
-            echo "build_kowsu=false"       >> $GITHUB_OUTPUT
-          fi
-
-          if [[ "$VARIANT" == "all" || "$VARIANT" == "xxksu" ]]; then
-            echo "build_xxksu=true"        >> $GITHUB_OUTPUT
-          else
-            echo "build_xxksu=false"       >> $GITHUB_OUTPUT
-          fi
-
-  # 
-  # 2  BUILD  KowSU + SuSFS
-  # 
-  build_kowsu_susfs:
-    name:  Build  KowSU + SuSFS
+  build_susfs:
     needs: setup
-    if: needs.setup.outputs.build_kowsu_susfs == 'true'
-    uses: ./.github/workflows/build-kowsu-susfs.yml
+    if: inputs.ksu_variant == 'all' || inputs.ksu_variant == 'MidoriSU-SuSFS'
+    uses: ./.github/workflows/build-susfs.yml
     with:
       sub_level: ${{ inputs.sub_level }}
 
-  # 
-  # 3  BUILD  KowSU (vanilla)
-  # 
-  build_kowsu:
-    name:  Build  KowSU
+  build_midorisu:
     needs: setup
-    if: needs.setup.outputs.build_kowsu == 'true'
-    uses: ./.github/workflows/build-kowsu.yml
+    if: inputs.ksu_variant == 'all' || inputs.ksu_variant == 'MidoriSU'
+    uses: ./.github/workflows/build-midorisu.yml
     with:
       sub_level: ${{ inputs.sub_level }}
 
-  # 
-  # 4  BUILD  xxKSU
-  # 
-  build_xxksu:
-    name:  Build  xxKSU
+  build_midorixx:
     needs: setup
-    if: needs.setup.outputs.build_xxksu == 'true'
-    uses: ./.github/workflows/build-xxksu.yml
+    if: inputs.ksu_variant == 'all' || inputs.ksu_variant == 'MidoriXX'
+    uses: ./.github/workflows/build-midorixx.yml
     with:
       sub_level: ${{ inputs.sub_level }}
 
-  # 
-  # 5  RELEASE
-  # 
   release:
-    name:  Release  Publish Artifacts
-    needs: [setup, build_kowsu_susfs, build_kowsu, build_xxksu]
+    needs: [setup, build_susfs, build_midorisu, build_midorixx]
     if: |
-      always() &&
+      always() && 
       inputs.create_release == true &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
-    uses: ./.github/workflows/release.yml
-    with:
-      ksu_variant:  ${{ inputs.ksu_variant }}
-      sub_level:    ${{ inputs.sub_level }}
-      release_tag:  ${{ needs.setup.outputs.release_tag }}
-      kernel_ver:   ${{ needs.setup.outputs.kernel_ver }}
-    secrets: inherit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: 'Kernel-*'
+          path: release_zips
+          merge-multiple: true
+    
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "${{ needs.setup.outputs.release_tag }}"
+          name: "GKI 6.12.${{ inputs.sub_level }} — ${{ needs.setup.outputs.release_tag }}"
+          files: release_zips/*.zip
