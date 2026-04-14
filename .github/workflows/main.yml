@@ -35,7 +35,7 @@ jobs:
       release_tag: ${{ steps.config.outputs.release_tag }}
     steps:
       - id: config
-        run: echo "release_tag=$(date +'%y%m%d')" >> $GITHUB_OUTPUT
+        run: echo "release_tag=$(date +'%y%m%d%H%M')" >> $GITHUB_OUTPUT
 
   build_susfs:
     needs: setup
