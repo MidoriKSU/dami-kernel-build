@@ -1014,12 +1014,11 @@ index e7375e5d..0a172220 100644
  #ifdef CONFIG_KSU_DISABLE_POLICY
      return !__ksu_is_allow_uid(uid);
  #else
-diff --git a/kernel/policy/app_profile.c b/kernel/policy/app_profile.c
+ diff --git a/kernel/policy/app_profile.c b/kernel/policy/app_profile.c
 index 88a5b0d5..58f8bc80 100644
 --- a/kernel/policy/app_profile.c
 +++ b/kernel/policy/app_profile.c
-@@ -104,8 +104,6 @@
- int escape_with_root_profile(void)
+@@ -105,8 +105,6 @@ int escape_with_root_profile(void)
  {
      int ret = 0;
      struct cred *cred;
@@ -1028,7 +1027,7 @@ index 88a5b0d5..58f8bc80 100644
      struct root_profile *profile = NULL;
      struct user_struct *new_user;
  
-@@ -114,7 +112,7 @@
+@@ -115,7 +113,7 @@ int escape_with_root_profile(void)
          return -ENOMEM;
      }
  
@@ -1037,7 +1036,7 @@ index 88a5b0d5..58f8bc80 100644
          pr_warn("Already root, don't escape!\n");
          goto out_abort_creds;
      }
-@@ -179,10 +177,6 @@
+@@ -181,10 +179,6 @@ int escape_with_root_profile(void)
  
      disable_seccomp();
  
@@ -1048,7 +1047,7 @@ index 88a5b0d5..58f8bc80 100644
      setup_mount_ns(profile->namespaces);
      ksu_put_root_profile(profile);
      return 0;
-@@ -192,14 +186,16 @@
+@@ -194,14 +188,16 @@ out_abort_creds:
      return ret;
  }
  
