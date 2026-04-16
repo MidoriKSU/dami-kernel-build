@@ -1,7 +1,7 @@
 From 9828ecbf95615c5be17946a921edd6c7126d5c19 Mon Sep 17 00:00:00 2001
 From: deepongi <infectedmushi@gmail.com>
-Date: Tue, 7 Apr 2026 02:31:17 +0100
-Subject: [PATCH] 10 patch
+Date: Thu, 16 Apr 2026 10:44:00 +0900
+Subject: [PATCH] fixed for latest KowSU by Midori
 
 ---
  kernel/Kbuild                     |  11 --
