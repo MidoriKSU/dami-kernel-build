@@ -1,4 +1,3 @@
-
 From 9828ecbf95615c5be17946a921edd6c7126d5c19 Mon Sep 17 00:00:00 2001
 From: deepongi <infectedmushi@gmail.com>
 Date: Tue, 7 Apr 2026 02:31:17 +0100
@@ -999,11 +998,12 @@ diff --git a/kernel/policy/allowlist.c b/kernel/policy/allowlist.c
 index e7375e5d..0a172220 100644
 --- a/kernel/policy/allowlist.c
 +++ b/kernel/policy/allowlist.c
-@@ -327,14 +327,6 @@ bool ksu_uid_should_umount(uid_t uid)
- #ifndef CONFIG_KSU_DISABLE_POLICY
-     struct app_profile profile = { .current_uid = uid };
- #endif
--    if (unlikely(is_uid_manager(uid))) {
+@@ -250,14 +250,6 @@
+ bool ksu_uid_should_umount(uid_t uid)
+ {
+     struct app_profile *profile;
+     bool res;
+-    if (likely(ksu_is_manager_appid_valid()) && unlikely(ksu_get_manager_appid() == uid % PER_USER_RANGE)) {
 -        // we should not umount on manager!
 -        return false;
 -    }
@@ -1018,7 +1018,8 @@ diff --git a/kernel/policy/app_profile.c b/kernel/policy/app_profile.c
 index 88a5b0d5..58f8bc80 100644
 --- a/kernel/policy/app_profile.c
 +++ b/kernel/policy/app_profile.c
-@@ -14,7 +14,6 @@
+@@ -13,7 +13,6 @@
+ #include "policy/app_profile.h"
  #include "klog.h" // IWYU pragma: keep
  #include "selinux/selinux.h"
  #include "infra/su_mount_ns.h"
@@ -1026,16 +1027,17 @@ index 88a5b0d5..58f8bc80 100644
  
  #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
  static struct group_info root_groups = { .usage = REFCOUNT_INIT(2) };
-@@ -106,8 +105,6 @@ int escape_with_root_profile(void)
+@@ -101,8 +100,6 @@
+ int escape_with_root_profile(void)
  {
      int ret = 0;
      struct cred *cred;
 -    struct task_struct *p = current;
 -    struct task_struct *t;
-     struct root_profile profile;
+     struct root_profile *profile = NULL;
      struct user_struct *new_user;
  
-@@ -117,7 +114,7 @@ int escape_with_root_profile(void)
+@@ -111,7 +108,7 @@
          return -ENOMEM;
      }
  
@@ -1044,7 +1046,7 @@ index 88a5b0d5..58f8bc80 100644
          pr_warn("Already root, don't escape!\n");
          goto out_abort_creds;
      }
-@@ -181,10 +178,6 @@ int escape_with_root_profile(void)
+@@ -176,10 +173,6 @@
  
      disable_seccomp();
  
@@ -1052,10 +1054,10 @@ index 88a5b0d5..58f8bc80 100644
 -        ksu_set_task_tracepoint_flag(t);
 -    }
 -
-     setup_mount_ns(profile.namespaces);
+     setup_mount_ns(profile->namespaces);
+     ksu_put_root_profile(profile);
      return 0;
- 
-@@ -193,14 +186,16 @@ out_abort_creds:
+@@ -194,14 +187,16 @@
      return ret;
  }
  
