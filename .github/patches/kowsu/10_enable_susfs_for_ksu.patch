@@ -1014,7 +1014,7 @@ index e7375e5d..0a172220 100644
  #ifdef CONFIG_KSU_DISABLE_POLICY
      return !__ksu_is_allow_uid(uid);
  #else
- diff --git a/kernel/policy/app_profile.c b/kernel/policy/app_profile.c
+diff --git a/kernel/policy/app_profile.c b/kernel/policy/app_profile.c
 index 88a5b0d5..58f8bc80 100644
 --- a/kernel/policy/app_profile.c
 +++ b/kernel/policy/app_profile.c
