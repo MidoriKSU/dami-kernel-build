@@ -80,5 +80,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: "${{ needs.setup.outputs.release_tag }}"
-          name: "GKI 6.12.${{ inputs.sub_level }} — ${{ needs.setup.outputs.release_tag }}"
+          name: "Kernel Midori Build (${{ needs.setup.outputs.release_tag }})"
           files: release_zips/*.zip

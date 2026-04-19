@@ -132,7 +132,7 @@ jobs:
           cp "$IMAGE" ./AnyKernel3/ && cd AnyKernel3
           
           BUILD_DATE="$(date +'%y%m%d')"
-          ZIP_NAME="MidoriXX_6.12.${{ inputs.sub_level }}-${BUILD_DATE}.zip"
+          ZIP_NAME="MidoriXX_kernel-android16-6.12.${{ inputs.sub_level }}.zip"
           zip -r9 "../$ZIP_NAME" *
           echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
 
