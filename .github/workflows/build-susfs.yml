@@ -70,7 +70,7 @@ jobs:
           cp -f KernelSU/kernel/include/*.h include/ 2>/dev/null || true
           cp -f KernelSU/kernel/uapi/*.h include/uapi/ 2>/dev/null || true
 
-      - name: "Patching: MidoriSU + SuSFS (10+50 Logic)"
+      - name: "Patching: MidoriSU + SuSFS"
         run: |
           cd kernel_workspace/common
 
