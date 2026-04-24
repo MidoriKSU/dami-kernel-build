@@ -1,27 +1,19 @@
 From: Midori <lv@lvlv.lv>
-Date: Fri, 24 Apr 2026 17:55:00 +0900
-Subject: [PATCH] fix latest KowSU + lastest SuSFS by Midori
+Date: Fri, 24 Apr 2026 18:00:00 +0900
+Subject: [PATCH] Fix Latest SuSFS for KowSU by Midori
 
 ---
- kernel/core/main.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ kernel/core/init.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/kernel/core/main.c b/kernel/core/main.c
---- a/kernel/core/main.c
-+++ b/kernel/core/main.c
-@@ -10,6 +10,15 @@
- #include <linux/sysfs.h>
- #include <linux/module.h>
- 
-+/* SUSFS hook toggles */
+diff --git a/kernel/core/init.c b/kernel/core/init.c
+--- a/kernel/core/init.c
++++ b/kernel/core/init.c
+@@ -1,2 +1,8 @@
 +#include <linux/types.h>
 +#include <linux/export.h>
-+
 +bool ksu_is_init_rc_hook_enabled = true;
 +EXPORT_SYMBOL(ksu_is_init_rc_hook_enabled);
-+
 +bool ksu_is_input_hook_enabled = true;
 +EXPORT_SYMBOL(ksu_is_input_hook_enabled);
-+
- #include "ksud.h"
- #include "core_hook.h"
+ #include <linux/kernel.h>
