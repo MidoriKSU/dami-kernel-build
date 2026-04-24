@@ -1,0 +1,31 @@
+From: Midori <lv@lvlv.lv>
+Date: Fri, 24 Apr 2026 17:43:00 +0900
+Subject: [PATCH] fix latest KowSU + lastest SuSFS by Midori
+
+---
+ drivers/kernelsu/main.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/drivers/kernelsu/main.c b/drivers/kernelsu/main.c
+index xxxxxxx..xxxxxxx 100644
+--- a/drivers/kernelsu/main.c
++++ b/drivers/kernelsu/main.c
+@@ -14,6 +14,15 @@
+ #include <linux/kobject.h>
+ #include <linux/sysfs.h>
+ 
++/* SUSFS hook toggles */
++#include <linux/types.h>
++#include <linux/export.h>
++
++bool ksu_is_init_rc_hook_enabled = true;
++EXPORT_SYMBOL(ksu_is_init_rc_hook_enabled);
++
++bool ksu_is_input_hook_enabled = true;
++EXPORT_SYMBOL(ksu_is_input_hook_enabled);
++
+ #include "ksud.h"
+ #include "core_hook.h"
+ 
+-- 
+2.34.1
