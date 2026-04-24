@@ -1,18 +1,17 @@
 From: Midori <lv@lvlv.lv>
-Date: Fri, 24 Apr 2026 17:43:00 +0900
+Date: Fri, 24 Apr 2026 17:55:00 +0900
 Subject: [PATCH] fix latest KowSU + lastest SuSFS by Midori
 
 ---
- drivers/kernelsu/main.c | 9 +++++++++
+ kernel/core/main.c | 9 +++++++++
  1 file changed, 9 insertions(+)
 
-diff --git a/drivers/kernelsu/main.c b/drivers/kernelsu/main.c
-index xxxxxxx..xxxxxxx 100644
---- a/drivers/kernelsu/main.c
-+++ b/drivers/kernelsu/main.c
-@@ -14,6 +14,15 @@
- #include <linux/kobject.h>
+diff --git a/kernel/core/main.c b/kernel/core/main.c
+--- a/kernel/core/main.c
++++ b/kernel/core/main.c
+@@ -10,6 +10,15 @@
  #include <linux/sysfs.h>
+ #include <linux/module.h>
  
 +/* SUSFS hook toggles */
 +#include <linux/types.h>
@@ -26,6 +25,3 @@ index xxxxxxx..xxxxxxx 100644
 +
  #include "ksud.h"
  #include "core_hook.h"
- 
--- 
-2.34.1
