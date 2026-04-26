@@ -27,7 +27,7 @@ runs:
        sed -i '/CONFIG_LOCALVERSION/d' $DEFCONFIG
 # Device-Specific local_version Logic
        if [ "${{ inputs.variant }}" = "popsicle" ]; then
-       echo 'CONFIG_LOCALVERSION="-android16-5-g6928909e3148-ab444322847-4k"' >> $DEFCONFIG
+       echo 'CONFIG_LOCALVERSION="-android16-5-g6928909e3148-abogki444322847-4k"' >> $DEFCONFIG
 elif [ "${{ inputs.variant }}" = "nezha" ]; then
        echo 'CONFIG_LOCALVERSION="-android16-5-g5a0e85dd9db0-ab14499855-4k"' >> $DEFCONFIG
 fi
