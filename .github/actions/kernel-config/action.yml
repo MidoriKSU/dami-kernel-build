@@ -1,4 +1,4 @@
-name: 'Inject  Kernel Configs'
+name: 'Inject Kernel Configs'
 description: 'Applies standard networking, performance, and KSU flags'
 inputs:
   defconfig_path:
@@ -9,6 +9,9 @@ inputs:
     required: true
   variant:
     description: 'KSU variant (kowsu, xxksu, kowsu+susfs)'
+    required: true
+  device:
+    description: 'Target device (popsicle, nezha)'
     required: true
   enable_susfs:
     description: 'Set to "true" to inject SuSFS configs'
@@ -23,14 +26,14 @@ runs:
       run: |
         DEFCONFIG="${{ inputs.defconfig_path }}"
         
-        # Ensure localversion matches original working build
-       sed -i '/CONFIG_LOCALVERSION/d' $DEFCONFIG
-# Device-Specific local_version Logic
-       if [ "${{ inputs.variant }}" = "popsicle" ]; then
-       echo 'CONFIG_LOCALVERSION="-android16-5-g6928909e3148-abogki444322847-4k"' >> $DEFCONFIG
-elif [ "${{ inputs.variant }}" = "nezha" ]; then
-       echo 'CONFIG_LOCALVERSION="-android16-5-g5a0e85dd9db0-ab14499855-4k"' >> $DEFCONFIG
-fi
+        # Device-Specific LOCALVERSION
+        sed -i '/CONFIG_LOCALVERSION/d' $DEFCONFIG
+        if [ "${{ inputs.device }}" = "popsicle" ]; then
+          echo 'CONFIG_LOCALVERSION="-android16-5-g6928909e3148-abogki444322847-4k"' >> $DEFCONFIG
+        elif [ "${{ inputs.device }}" = "nezha" ]; then
+          echo 'CONFIG_LOCALVERSION="-android16-5-g5a0e85dd9db0-ab14499855-4k"' >> $DEFCONFIG
+        fi
+
         cat >> $DEFCONFIG <<-'EOF'
         # Core Bootability & Performance
         CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y

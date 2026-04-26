@@ -138,6 +138,7 @@ jobs:
           defconfig_path: "kernel_workspace/common/arch/arm64/configs/gki_defconfig"
           build_config_path: "kernel_workspace/common/build.config.gki"
           variant: "xxksu"
+          device: ${{ inputs.device }}
           enable_susfs: "false"
 
       - name: Fix Localversion
