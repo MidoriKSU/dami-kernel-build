@@ -28,7 +28,7 @@ jobs:
       - name: Initialize AOSP Clang
         run: |
           echo "=== Downloading AOSP Clang r536225 ==="
-          curl -Lo clang.tar.gz "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r536225.tar.gz"
+          aria2c -s16 -x16 -k1M "https://github.com/MidoriKSU/dami-kernel-build/releases/download/0/clang-r536225.tar.gz" -o clang.tar.gz
           mkdir -p "$GITHUB_WORKSPACE/clang-aosp" && tar -xf clang.tar.gz -C "$GITHUB_WORKSPACE/clang-aosp"
 
           echo "=== AOSP Clang version ==="
