@@ -1,0 +1,97 @@
+name: Test Toolchain
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup
+        run: |
+          # ===== AOSP 官方 Clang (r536225) 验证 =====
+          echo "=== Downloading AOSP Clang r536225 ==="
+          curl -Lo clang-r536225.tar.gz "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r536225.tar.gz"
+          
+          echo "=== Extracting AOSP Clang ==="
+          mkdir -p "$GITHUB_WORKSPACE/clang-aosp" && tar -xf clang-r536225.tar.gz -C "$GITHUB_WORKSPACE/clang-aosp"
+          
+          echo "=== AOSP Clang version ==="
+          "$GITHUB_WORKSPACE/clang-aosp/bin/clang" --version || echo "❌ AOSP clang failed"
+          "$GITHUB_WORKSPACE/clang-aosp/bin/ld.lld" --version || echo "❌ AOSP ld.lld failed"
+
+          # ===== ZyCromerZ Clang 23 验证 =====
+          CLANG_RELEASE="23.0.0git-20260130-release"
+          CLANG_VER="23.0.0git-20260130"
+          CLANG_URL="https://github.com/ZyCromerZ/Clang/releases/download/${CLANG_RELEASE}/Clang-${CLANG_VER}.tar.gz"
+          GCC_VER="15.2.rel1"
+          ARM64_URL="https://developer.arm.com/-/media/Files/downloads/gnu/${GCC_VER}/binrel/arm-gnu-toolchain-${GCC_VER}-x86_64-aarch64-none-linux-gnu.tar.xz"
+          ARM32_URL="https://developer.arm.com/-/media/Files/downloads/gnu/${GCC_VER}/binrel/arm-gnu-toolchain-${GCC_VER}-x86_64-arm-none-eabi.tar.xz"
+          
+          echo "=== Downloading ZyCromerZ Clang ==="
+          wget -O clang.tar.gz "$CLANG_URL"
+          mkdir -p "$GITHUB_WORKSPACE/clang-zyc" && tar -xf clang.tar.gz -C "$GITHUB_WORKSPACE/clang-zyc"
+          
+          echo "=== ZyCromerZ Clang version ==="
+          "$GITHUB_WORKSPACE/clang-zyc/bin/clang" --version
+          "$GITHUB_WORKSPACE/clang-zyc/bin/ld.lld" --version
+
+          echo "=== Downloading ARM64 GCC ==="
+          wget -O arm64.tar.xz "$ARM64_URL"
+          mkdir -p "$GITHUB_WORKSPACE/arm64-gcc" && tar -xf arm64.tar.xz -C "$GITHUB_WORKSPACE/arm64-gcc" --strip-components=1
+          "$GITHUB_WORKSPACE/arm64-gcc/bin/aarch64-none-linux-gnu-gcc" --version | head -1
+          
+          echo "=== Downloading ARM32 GCC ==="
+          wget -O arm32.tar.xz "$ARM32_URL"
+          mkdir -p "$GITHUB_WORKSPACE/arm32-gcc" && tar -xf arm32.tar.xz -C "$GITHUB_WORKSPACE/arm32-gcc" --strip-components=1
+          "$GITHUB_WORKSPACE/arm32-gcc/bin/arm-none-eabi-gcc" --version | head -1
+
+      - name: AOSP Prebuilt Clang - Cross Compile Check
+        run: |
+          CLANG_AOSP="$GITHUB_WORKSPACE/clang-aosp/bin"
+          
+          echo ""
+          echo "============================================"
+          echo "  AOSP Prebuilt Clang - Cross Compile Check"
+          echo "============================================"
+          
+          echo ""
+          echo "--- Target: aarch64-linux-gnu ---"
+          echo 'int main() { return 0; }' > /tmp/test.c
+          
+          echo "Compiling with --target=aarch64-linux-gnu..."
+          "$CLANG_AOSP/clang" --target=aarch64-linux-gnu -c /tmp/test.c -o /tmp/test.o && echo "✅ Cross compile: SUCCESS" || echo "❌ Cross compile: FAILED"
+          
+          echo ""
+          echo "--- Checking builtin cross tools ---"
+          echo "aarch64-linux-gnu-as:     $([ -f "$CLANG_AOSP/aarch64-linux-gnu-as" ] && echo '✅' || echo '❌')"
+          echo "aarch64-linux-gnu-ld:     $([ -f "$CLANG_AOSP/aarch64-linux-gnu-ld" ] && echo '✅' || echo '❌')"
+          
+          echo ""
+          echo "--- LLVM binutils ---"
+          echo "llvm-ar:      $([ -x "$CLANG_AOSP/llvm-ar" ] && echo '✅' || echo '❌')"
+          echo "llvm-nm:      $([ -x "$CLANG_AOSP/llvm-nm" ] && echo '✅' || echo '❌')"
+          echo "llvm-objcopy: $([ -x "$CLANG_AOSP/llvm-objcopy" ] && echo '✅' || echo '❌')"
+          echo "llvm-objdump: $([ -x "$CLANG_AOSP/llvm-objdump" ] && echo '✅' || echo '❌')"
+          echo "llvm-readelf: $([ -x "$CLANG_AOSP/llvm-readelf" ] && echo '✅' || echo '❌')"
+          echo "llvm-strip:   $([ -x "$CLANG_AOSP/llvm-strip" ] && echo '✅' || echo '❌')"
+          
+          echo ""
+          echo "--- Linker ---"
+          echo "ld.lld:       $([ -x "$CLANG_AOSP/ld.lld" ] && echo '✅' || echo '❌')"
+          "$CLANG_AOSP/ld.lld" --version 2>/dev/null | head -1
+          
+          echo ""
+          echo "--- clang integrated assembler ---"
+          "$CLANG_AOSP/clang" --target=aarch64-linux-gnu -fintegrated-as -c /tmp/test.c -o /tmp/test2.o && echo "✅ Integrated AS: SUCCESS" || echo "❌ Integrated AS: FAILED"
+          
+          echo ""
+          echo "--- Result ---"
+          if "$CLANG_AOSP/clang" --target=aarch64-linux-gnu -c /tmp/test.c -o /tmp/test.o 2>/dev/null; then
+            echo "✅ AOSP Clang CAN cross-compile independently (no ARM GCC needed)"
+          else
+            echo "❌ AOSP Clang needs ARM GCC for cross-compilation"
+          fi
+          echo "============================================"
+          
+          rm -f /tmp/test.c /tmp/test.o /tmp/test2.o

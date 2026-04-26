@@ -1,0 +1,7 @@
+toolchains/aosp-clang/*
+toolchains/zyc-clang/*
+toolchains/arm-gcc/*
+kernel/*
+*.tar.gz
+*.tar.xz
+*.zip
