@@ -116,9 +116,9 @@ jobs:
           sed -i '/bad_version:/,/^}/ s/return 0;/return 1;/' kernel/module/version.c
 
       - name: Apply SYSVIPC KABI Fix
-  run: |
-    cd kernel_workspace/common
-    patch -p1 < "${{ github.workspace }}/.github/patches/gki/fix_sysvipc_kabi_a16-6.12.patch"
+        run: |
+         cd kernel_workspace/common
+         patch -p1 < "${{ github.workspace }}/.github/patches/gki/fix_sysvipc_kabi_a16-6.12.patch"
 
       - name: Inject Defconfig Flags
         uses: ./.github/actions/kernel-config
