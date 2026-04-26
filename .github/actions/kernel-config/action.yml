@@ -25,7 +25,7 @@ runs:
         
         # Ensure localversion matches original working build
         sed -i '/CONFIG_LOCALVERSION/d' $DEFCONFIG
-        echo 'CONFIG_LOCALVERSION="-android16-5-g6928909e3148-abogki444322847-4k"' >> $DEFCONFIG
+        echo 'CONFIG_LOCALVERSION="-android16-5-g6928909e3148-ab444322847-4k"' >> $DEFCONFIG
 
         cat >> $DEFCONFIG <<-'EOF'
         # Core Bootability & Performance
