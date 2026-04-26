@@ -31,9 +31,19 @@ on:
         type: string
 
 jobs:
-  build:
-    name: ${{ inputs.ksu_variant }} ${{ inputs.device }} ${{ inputs.toolchain }}
-    uses: ./.github/workflows/build-${{ inputs.ksu_variant }}.yml
+  build-xxksu:
+    if: ${{ inputs.ksu_variant == 'xxksu' }}
+    name: xxKSU ${{ inputs.device }} ${{ inputs.toolchain }}
+    uses: ./.github/workflows/build-xxksu.yml
+    with:
+      device: ${{ inputs.device }}
+      toolchain: ${{ inputs.toolchain }}
+      sub_level: ${{ inputs.sub_level }}
+
+  build-kowsu:
+    if: ${{ inputs.ksu_variant == 'kowsu' }}
+    name: KowSU ${{ inputs.device }} ${{ inputs.toolchain }}
+    uses: ./.github/workflows/build-kowsu.yml
     with:
       device: ${{ inputs.device }}
       toolchain: ${{ inputs.toolchain }}
