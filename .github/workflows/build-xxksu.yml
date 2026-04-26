@@ -176,6 +176,7 @@ jobs:
           export CC="$(pwd)/cc-wrapper"
 
           make -j$(nproc --all) O=out \
+            KCFLAGS="-Wno-default-const-init-var-unsafe -Wno-default-const-init-field-unsafe -Wno-unterminated-string-initialization" \
             ARCH=arm64 LLVM=1 LLVM_IAS=1 \
             CC="$CC" LD="$LD" AR="$AR" NM="$NM" OBJCOPY="$OBJCOPY" OBJDUMP="$OBJDUMP" \
             READELF="$READELF" STRIP="$STRIP" HOSTCC="$CC" HOSTCXX="$CC" \
@@ -184,6 +185,7 @@ jobs:
             gki_defconfig
 
           make -j$(nproc --all) O=out \
+            KCFLAGS="-Wno-default-const-init-var-unsafe -Wno-default-const-init-field-unsafe -Wno-unterminated-string-initialization" \
             ARCH=arm64 LLVM=1 LLVM_IAS=1 \
             CC="$CC" LD="$LD" AR="$AR" NM="$NM" OBJCOPY="$OBJCOPY" OBJDUMP="$OBJDUMP" \
             READELF="$READELF" STRIP="$STRIP" HOSTCC="$CC" HOSTCXX="$CC" \
