@@ -85,6 +85,13 @@ jobs:
           grep -q "kernelsu" drivers/Makefile || echo 'obj-$(CONFIG_KSU) += kernelsu/' >> drivers/Makefile
           grep -q "kernelsu" drivers/Kconfig || sed -i '/endmenu/i source "drivers/kernelsu/Kconfig"' drivers/Kconfig
 
+      - name: Get KSU Version
+        run: |
+          git clone --depth=1 https://github.com/TheSillyOk/sh scripts-temp
+          KSU_VER=$(bash scripts-temp/get_ksuver.sh "backslashxx" "KernelSU" "master" || echo "unknown")
+          echo "KSU_VERSION=$KSU_VER" >> $GITHUB_ENV
+          rm -rf scripts-temp
+
       - name: Create Patch Healer
         run: |
           cat > "${{ github.workspace }}/kernel_workspace/common/heal_patch.py" << 'PYEOF'
@@ -110,15 +117,20 @@ jobs:
           python3 heal_patch.py "${{ github.workspace }}/.github/patches/xxksu/scope-min-manual-hooks-v2.0.patch"
           patch -p1 -l --fuzz=3 < "${{ github.workspace }}/.github/patches/xxksu/scope-min-manual-hooks-v2.0.patch"
 
+      - name: Apply SYSVIPC KABI Fix
+        run: |
+          cd kernel_workspace/common
+          patch -p1 < "${{ github.workspace }}/.github/patches/gki/fix_sysvipc_kabi_a16-6.12.patch"
+
       - name: Apply KMI Bypass
         run: |
           cd kernel_workspace/common
           sed -i '/bad_version:/,/^}/ s/return 0;/return 1;/' kernel/module/version.c
 
-      - name: Apply SYSVIPC KABI Fix
+      - name: Inject Device Localversion
         run: |
-         cd kernel_workspace/common
-         patch -p1 < "${{ github.workspace }}/.github/patches/gki/fix_sysvipc_kabi_a16-6.12.patch"
+          cd kernel_workspace/common
+          echo "CONFIG_LOCALVERSION=\"${{ env.CONFIG_LOCALVERSION }}\"" >> arch/arm64/configs/gki_defconfig
 
       - name: Inject Defconfig Flags
         uses: ./.github/actions/kernel-config
@@ -181,8 +193,8 @@ jobs:
           export CC="$(pwd)/cc-wrapper"
 
           make -j$(nproc --all) O=out \
-            KCFLAGS="-Wno-default-const-init-var-unsafe -Wno-default-const-init-field-unsafe -Wno-unterminated-string-initialization" \
             ARCH=arm64 LLVM=1 LLVM_IAS=1 \
+            KCFLAGS="-Wno-default-const-init-var-unsafe -Wno-default-const-init-field-unsafe -Wno-unterminated-string-initialization" \
             CC="$CC" LD="$LD" AR="$AR" NM="$NM" OBJCOPY="$OBJCOPY" OBJDUMP="$OBJDUMP" \
             READELF="$READELF" STRIP="$STRIP" HOSTCC="$CC" HOSTCXX="$CC" \
             HOSTLD="$HOSTLD" HOSTAR="$HOSTAR" CLANG_TRIPLE="$CLANG_TRIPLE" \
@@ -190,8 +202,8 @@ jobs:
             gki_defconfig
 
           make -j$(nproc --all) O=out \
-            KCFLAGS="-Wno-default-const-init-var-unsafe -Wno-default-const-init-field-unsafe -Wno-unterminated-string-initialization" \
             ARCH=arm64 LLVM=1 LLVM_IAS=1 \
+            KCFLAGS="-Wno-default-const-init-var-unsafe -Wno-default-const-init-field-unsafe -Wno-unterminated-string-initialization" \
             CC="$CC" LD="$LD" AR="$AR" NM="$NM" OBJCOPY="$OBJCOPY" OBJDUMP="$OBJDUMP" \
             READELF="$READELF" STRIP="$STRIP" HOSTCC="$CC" HOSTCXX="$CC" \
             HOSTLD="$HOSTLD" HOSTAR="$HOSTAR" CLANG_TRIPLE="$CLANG_TRIPLE" \
@@ -207,12 +219,12 @@ jobs:
           git clone https://github.com/yapixel/AnyKernel3 --depth=1
           cp "$IMAGE" ./AnyKernel3/ && cd AnyKernel3
 
-          ZIP_NAME="xxksu-${{ inputs.device }}-${{ inputs.toolchain }}-${{ inputs.sub_level }}.zip"
+          ZIP_NAME="xxksu-r${{ env.KSU_VERSION }}-${{ inputs.device }}-${{ inputs.toolchain }}.zip"
           zip -r9 "../$ZIP_NAME" *
           echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v7.0.0
         with:
-          name: xxksu-${{ inputs.device }}-${{ inputs.toolchain }}
+          name: xxksu-r${{ env.KSU_VERSION }}-${{ inputs.device }}-${{ inputs.toolchain }}
           path: kernel_workspace/${{ env.ZIP_NAME }}

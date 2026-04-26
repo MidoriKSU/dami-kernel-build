@@ -14,7 +14,6 @@ inputs:
     description: 'Set to "true" to inject SuSFS configs'
     required: false
     default: 'false'
-
 runs:
   using: "composite"
   steps:
@@ -24,9 +23,6 @@ runs:
         DEFCONFIG="${{ inputs.defconfig_path }}"
         
         # Ensure localversion matches original working build
-        sed -i '/CONFIG_LOCALVERSION/d' $DEFCONFIG
-        echo 'CONFIG_LOCALVERSION="-android16-5-g6928909e3148-abogki444322847-4k"' >> $DEFCONFIG
-
         cat >> $DEFCONFIG <<-'EOF'
         # Core Bootability & Performance
         CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y
@@ -35,7 +31,6 @@ runs:
         CONFIG_ANDROID_BINDER_IPC_RUST=m
         CONFIG_TMPFS_XATTR=y
         CONFIG_TMPFS_POSIX_ACL=y
-
         # Networking Configuration
         CONFIG_IP_NF_TARGET_TTL=y
         CONFIG_IP6_NF_TARGET_HL=y
@@ -43,7 +38,6 @@ runs:
         CONFIG_TCP_CONG_ADVANCED=y
         CONFIG_TCP_CONG_BBR=y
         CONFIG_NET_SCH_FQ=y
-
         # IPSet & TProxy Suite
         CONFIG_IP_SET=y
         CONFIG_NETFILTER_XT_SET=y
@@ -79,7 +73,6 @@ runs:
         CONFIG_IP6_NF_NAT=y
         CONFIG_IP6_NF_TARGET_REDIRECT=y
         EOF
-
         # Variant-Specific KSU Logic
         if [ "${{ inputs.variant }}" = "xxksu" ]; then
           cat >> $DEFCONFIG <<-'EOF'
@@ -96,7 +89,6 @@ runs:
         CONFIG_HAVE_KPROBES=y
         EOF
         fi
-
         # SuSFS Injection
         if [ "${{ inputs.enable_susfs }}" = "true" ]; then
           cat >> $DEFCONFIG <<-'EOF'
