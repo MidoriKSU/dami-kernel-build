@@ -1,0 +1,82 @@
+name: Build-Tools Environment Auditor
+
+on:
+  workflow_dispatch: # 手动触发，方便调试
+  workflow_call:     # 供主流程调用
+
+jobs:
+  audit_environment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Prepare Workspace
+        run: |
+          mkdir -p audit_workspace/prebuilts
+          mkdir -p audit_workspace/common
+
+      - name: Download and Extract Build-Tools
+        run: |
+          cd audit_workspace
+          # 替换为你的真实下载链接
+          aria2c -s16 -x16 -k1M "https://github.com/MidoriKSU/dami-kernel-build/releases/download/0/build-tools.zip" -o build-tools.zip
+          unzip -q build-tools.zip -d prebuilts/
+          rm build-tools.zip
+          
+          # 关键步：强制修正包内所有 bin 目录的可执行权限 (防止打包者疏忽)
+          find prebuilts -type d -name "bin" -exec chmod -R +x {} +
+          find prebuilts -type f -executable -exec chmod +x {} +
+
+      - name: Deep Analysis of Toolchain
+        run: |
+          cd audit_workspace/prebuilts
+          echo "========= 🛠️ 工具链指纹审计 ========="
+          
+          # 1. 查找 Clang 路径并验证版本
+          CLANG_BIN=$(find . -name "clang" -type f | head -n 1)
+          if [ -n "$CLANG_BIN" ]; then
+            echo "Found Clang at: $CLANG_BIN"
+            $CLANG_BIN --version
+          else
+            echo "❌ Error: Clang not found in zip!"
+          fi
+
+          # 2. 检查 Rust & Bindgen
+          BINDGEN_BIN=$(find . -name "bindgen" -type f | head -n 1)
+          if [ -n "$BINDGEN_BIN" ]; then
+            echo "Found Bindgen at: $BINDGEN_BIN"
+            $BINDGEN_BIN --version
+          fi
+
+          # 3. 审计关键构建工具 (dtc, lz4, mkbootimg)
+          echo "Checking Build Utilities..."
+          for tool in dtc lz4 mkbootimg; do
+            TOOL_PATH=$(find . -name "$tool" -type f | head -n 1)
+            [ -n "$TOOL_PATH" ] && echo "✅ $tool: Found at $TOOL_PATH" || echo "⚠️ $tool: Missing"
+          done
+
+          # 4. 软链接一致性分析
+          echo "Checking Symlinks..."
+          find . -type l -ls | awk '{print $11 " -> " $13}'
+
+      - name: Generate Make Environment Snippet
+        run: |
+          cd audit_workspace/prebuilts
+          # 自动定位路径以生成 export 脚本
+          ABS_PATH=$(pwd)
+          CLANG_DIR=$(dirname $(dirname $(find . -name "clang" -type f | head -n 1)))
+          BUILD_TOOLS_DIR=$(dirname $(find . -name "dtc" -type f | head -n 1))
+          RUST_DIR=$(dirname $(dirname $(find . -name "rustc" -type f | head -n 1)))
+
+          echo "========= 📋 建议的 Make 环境变量 ========="
+          echo "export PATH=\"$ABS_PATH/$CLANG_DIR/bin:$ABS_PATH/$BUILD_TOOLS_DIR:$ABS_PATH/$RUST_DIR/bin:\$PATH\""
+          echo "export LIBCLANG_PATH=\"$ABS_PATH/$CLANG_DIR/lib\""
+          echo "export CLANG_TRIPLE=aarch64-linux-gnu-"
+          echo "=========================================="
+
+      - name: Save Environment Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: toolchain-audit-report
+          path: audit_workspace/prebuilts
