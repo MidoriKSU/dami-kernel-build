@@ -15,12 +15,6 @@ on:
       build_timestamp:
         required: true
         type: string
-      build_host:
-        required: true
-        type: string
-      build_user:
-        required: true
-        type: string
 
 jobs:
   build:
@@ -66,13 +60,11 @@ jobs:
           if [ -f "KernelSU/kernel/setup.sh" ]; then
             sed -i 's|https://github.com/backslashxx/KernelSU|https://github.com/MidoriKSU/KernelSU|g' KernelSU/kernel/setup.sh
           fi
-          
           if [ -f "KernelSU/kernel/manager/apk_sign.c" ]; then
             sed -i 's/unsigned char buffer\[0x11\] = { 0 };/return true;\n\tunsigned char buffer[0x11] = { 0 };/g' KernelSU/kernel/manager/apk_sign.c
             sed -i '/bool is_manager_apk(char \*path)/,$d' KernelSU/kernel/manager/apk_sign.c
             echo -e "bool is_manager_apk(char *path)\n{\n\tchar pkg[KSU_MAX_PACKAGE_NAME];\n\tif (get_pkg_from_apk_path(pkg, path) < 0) {\n\t\treturn false;\n\t}\n\treturn strcmp(pkg, \"com.midori.supermanager\") == 0;\n}" >> KernelSU/kernel/manager/apk_sign.c
           fi
-
           git clone --bare https://github.com/midori01/KernelSU.git /tmp/midori01_ksu
           COMMIT_COUNT=$(git -C /tmp/midori01_ksu rev-list --count HEAD)
           rm -rf /tmp/midori01_ksu
@@ -81,7 +73,7 @@ jobs:
           if [ -f "KernelSU/kernel/Makefile" ]; then
             sed -i "s/-DKSU_VERSION=[0-9]*/-DKSU_VERSION=$NEW_KSU_VERSION/g" KernelSU/kernel/Makefile
           fi
-
+          
           ln -sf ../KernelSU/kernel drivers/kernelsu
           grep -q "kernelsu" drivers/Makefile || echo 'obj-$(CONFIG_KSU) += kernelsu/' >> drivers/Makefile
           grep -q "kernelsu" drivers/Kconfig || sed -i '/endmenu/i source "drivers/kernelsu/Kconfig"' drivers/Kconfig
@@ -111,7 +103,6 @@ jobs:
           export LIBCLANG_PATH="$WORKDIR/kernel_workspace/clang/lib"
           
           cd kernel_workspace/common
-          
           COMMON_REAL_PATH=$(pwd -P)
           ROOT_REAL_PATH=$(dirname "$COMMON_REAL_PATH")
           KCFLAGS+=" -fdebug-prefix-map=$ROOT_REAL_PATH=."
@@ -129,8 +120,8 @@ jobs:
           
           export SOURCE_DATE_EPOCH="${{ inputs.build_epoch }}"
           export KBUILD_BUILD_TIMESTAMP="${{ inputs.build_timestamp }}"
-          export KBUILD_BUILD_HOST="${{ inputs.build_host }}"
-          export KBUILD_BUILD_USER="${{ inputs.build_user }}"
+          export KBUILD_BUILD_HOST="build-host"
+          export KBUILD_BUILD_USER="kleaf"
           
           make -j$(nproc --all) O=out ${TOOL_ARGS} gki_defconfig
           make -j$(nproc --all) O=out ${TOOL_ARGS} Image
@@ -140,7 +131,6 @@ jobs:
           cd kernel_workspace
           IMAGE="./common/out/arch/arm64/boot/Image"
           [ -f "$IMAGE" ] || (echo "Binary Missing!" && exit 1)
-          
           git clone https://github.com/yapixel/AnyKernel3 --depth=1
           cp "$IMAGE" ./AnyKernel3/ && cd AnyKernel3
           rm -rf .git

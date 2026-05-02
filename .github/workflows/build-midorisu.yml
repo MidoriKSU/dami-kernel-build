@@ -15,12 +15,6 @@ on:
       build_timestamp:
         required: true
         type: string
-      build_host:
-        required: true
-        type: string
-      build_user:
-        required: true
-        type: string
 
 jobs:
   build:
@@ -60,10 +54,8 @@ jobs:
           cd kernel_workspace/common
           git clone --depth=1 --branch=main https://github.com/midori01/KernelSU.git KernelSU
           ln -sf ../KernelSU/kernel drivers/kernelsu
-          
           grep -q "kernelsu" drivers/Makefile || echo 'obj-$(CONFIG_KSU) += kernelsu/' >> drivers/Makefile
           grep -q "kernelsu" drivers/Kconfig || sed -i '/endmenu/i source "drivers/kernelsu/Kconfig"' drivers/Kconfig
-          
           cp -r KernelSU/uapi KernelSU/kernel/uapi 2>/dev/null || true
           echo 'ccflags-y += -I$(srctree)/drivers/kernelsu' >> drivers/kernelsu/Makefile
           mkdir -p include/uapi
@@ -91,7 +83,6 @@ jobs:
           export LIBCLANG_PATH="$WORKDIR/kernel_workspace/clang/lib"
           
           cd kernel_workspace/common
-          
           COMMON_REAL_PATH=$(pwd -P)
           ROOT_REAL_PATH=$(dirname "$COMMON_REAL_PATH")
           KCFLAGS+=" -fdebug-prefix-map=$ROOT_REAL_PATH=."
@@ -109,8 +100,8 @@ jobs:
           
           export SOURCE_DATE_EPOCH="${{ inputs.build_epoch }}"
           export KBUILD_BUILD_TIMESTAMP="${{ inputs.build_timestamp }}"
-          export KBUILD_BUILD_HOST="${{ inputs.build_host }}"
-          export KBUILD_BUILD_USER="${{ inputs.build_user }}"
+          export KBUILD_BUILD_HOST="build-host"
+          export KBUILD_BUILD_USER="kleaf"
           
           make -j$(nproc --all) O=out ${TOOL_ARGS} gki_defconfig
           make -j$(nproc --all) O=out ${TOOL_ARGS} Image
@@ -119,8 +110,7 @@ jobs:
         run: |
           cd kernel_workspace
           IMAGE="./common/out/arch/arm64/boot/Image"
-          [ -f "$IMAGE" ] || (echo "Binary Missing!" && exit 1)
-          
+          [ -f "$IMAGE" ] || (echo "Binary Missing!" && exit 1) 
           git clone https://github.com/yapixel/AnyKernel3 --depth=1
           cp "$IMAGE" ./AnyKernel3/ && cd AnyKernel3
           rm -rf .git

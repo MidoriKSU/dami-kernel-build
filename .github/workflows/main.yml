@@ -19,29 +19,19 @@ on:
         default: true
         type: boolean
       kernel_localversion:
-        description: 'Spoofed Kernel Name'
+        description: 'Spoof Kernel Name'
         required: true
         default: '-android16-5-g5a0e85dd9db0-ab14499855-4k'
         type: string
       build_timestamp:
-        description: 'Spoofed Build Time'
+        description: 'Spoof Build Time'
         required: true
         default: 'Wed Nov 26 11:16:14 UTC 2025'
         type: string
       build_epoch:
-        description: 'Spoofed UNIX Time'
+        description: 'SOURCE_DATE_EPOCH'
         required: true
         default: '1764155774'
-        type: string
-      build_host:
-        description: 'Spoofed Build Hostname'
-        required: true
-        default: 'build-host'
-        type: string
-      build_user:
-        description: 'Spoofed Build Username'
-        required: true
-        default: 'kleaf'
         type: string
 
 permissions:
