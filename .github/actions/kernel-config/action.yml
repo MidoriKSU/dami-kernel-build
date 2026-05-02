@@ -14,6 +14,9 @@ inputs:
     description: 'Set to "true" to inject SuSFS configs'
     required: false
     default: 'false'
+  localversion:
+    description: 'Kernel Localversion String'
+    required: true
 
 runs:
   using: "composite"
@@ -24,7 +27,7 @@ runs:
         DEFCONFIG="${{ inputs.defconfig_path }}"
         
         sed -i '/CONFIG_LOCALVERSION/d' $DEFCONFIG
-        echo 'CONFIG_LOCALVERSION="-android16-5-g5a0e85dd9db0-ab14499855-4k"' >> $DEFCONFIG
+        echo "CONFIG_LOCALVERSION=\"${{ inputs.localversion }}\"" >> $DEFCONFIG
 
         cat >> $DEFCONFIG <<-'EOF'
         # Core Bootability & Performance

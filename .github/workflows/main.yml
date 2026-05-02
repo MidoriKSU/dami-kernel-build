@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       ksu_variant:
-        description: 'KernelSU variant to build'
+        description: 'KernelSU Variant'
         required: true
         default: 'all'
         type: choice
@@ -13,16 +13,36 @@ on:
           - MidoriSU-SuSFS
           - MidoriSU
           - MidoriXX
-      sub_level:
-        description: 'Kernel sublevel'
-        required: true
-        default: '23'
-        type: string
       create_release:
-        description: 'Publish a GitHub Release'
+        description: 'Publish Release'
         required: false
         default: true
         type: boolean
+      kernel_localversion:
+        description: 'Spoofed Kernel Name'
+        required: true
+        default: '-android16-5-g5a0e85dd9db0-ab14499855-4k'
+        type: string
+      build_timestamp:
+        description: 'Spoofed Build Time'
+        required: true
+        default: 'Wed Nov 26 11:16:14 UTC 2025'
+        type: string
+      build_epoch:
+        description: 'Spoofed UNIX Time'
+        required: true
+        default: '1764155774'
+        type: string
+      build_host:
+        description: 'Spoofed Build Hostname'
+        required: true
+        default: 'build-host'
+        type: string
+      build_user:
+        description: 'Spoofed Build Username'
+        required: true
+        default: 'kleaf'
+        type: string
 
 permissions:
   contents: write
@@ -42,21 +62,36 @@ jobs:
     if: inputs.ksu_variant == 'all' || inputs.ksu_variant == 'MidoriSU-SuSFS'
     uses: ./.github/workflows/build-susfs.yml
     with:
-      sub_level: ${{ inputs.sub_level }}
+      sub_level: '23'
+      kernel_localversion: ${{ inputs.kernel_localversion }}
+      build_epoch: ${{ inputs.build_epoch }}
+      build_timestamp: ${{ inputs.build_timestamp }}
+      build_host: ${{ inputs.build_host }}
+      build_user: ${{ inputs.build_user }}
 
   build_midorisu:
     needs: setup
     if: inputs.ksu_variant == 'all' || inputs.ksu_variant == 'MidoriSU'
     uses: ./.github/workflows/build-midorisu.yml
     with:
-      sub_level: ${{ inputs.sub_level }}
+      sub_level: '23'
+      kernel_localversion: ${{ inputs.kernel_localversion }}
+      build_epoch: ${{ inputs.build_epoch }}
+      build_timestamp: ${{ inputs.build_timestamp }}
+      build_host: ${{ inputs.build_host }}
+      build_user: ${{ inputs.build_user }}
 
   build_midorixx:
     needs: setup
     if: inputs.ksu_variant == 'all' || inputs.ksu_variant == 'MidoriXX'
     uses: ./.github/workflows/build-midorixx.yml
     with:
-      sub_level: ${{ inputs.sub_level }}
+      sub_level: '23'
+      kernel_localversion: ${{ inputs.kernel_localversion }}
+      build_epoch: ${{ inputs.build_epoch }}
+      build_timestamp: ${{ inputs.build_timestamp }}
+      build_host: ${{ inputs.build_host }}
+      build_user: ${{ inputs.build_user }}
 
   release:
     needs: [setup, build_susfs, build_midorisu, build_midorixx]
@@ -75,10 +110,18 @@ jobs:
           pattern: 'Kernel-*'
           path: release_zips
           merge-multiple: true
+          
+      - name: Download MidoriSU Manager APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download --repo midori01/KernelSU --pattern "*.apk" --dir release_zips
     
       - name: Publish Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: "${{ needs.setup.outputs.release_tag }}"
           name: "Kernel Midori Build (${{ needs.setup.outputs.release_tag }})"
-          files: release_zips/*.zip
+          files: |
+            release_zips/*.zip
+            release_zips/*.apk
