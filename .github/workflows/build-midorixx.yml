@@ -56,8 +56,8 @@ jobs:
         run: |
           cd kernel_workspace/common
           git clone --depth=1 --branch=main https://github.com/MidoriKSU/KernelSU.git KernelSU
-          chmod +x ${{ github.workspace }}/scripts/_setup_midorixx.sh
-          bash ${{ github.workspace }}/scripts/_setup_midorixx.sh
+          chmod +x ${{ github.workspace }}/.github/scripts/_setup_midorixx.sh
+          bash ${{ github.workspace }}/.github/scripts/_setup_midorixx.sh
           ln -sf ../KernelSU/kernel drivers/kernelsu
           grep -q "kernelsu" drivers/Makefile || echo 'obj-$(CONFIG_KSU) += kernelsu/' >> drivers/Makefile
           grep -q "kernelsu" drivers/Kconfig || sed -i '/endmenu/i source "drivers/kernelsu/Kconfig"' drivers/Kconfig
@@ -98,7 +98,7 @@ jobs:
           export ARCH=arm64 SUBARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
           
-          cp ${{ github.workspace }}/scripts/_setup_env.sh ./ 2>/dev/null || true
+          cp ${{ github.workspace }}/.github/scripts/_setup_env.sh ./ 2>/dev/null || true
           chmod 777 ./*.sh 2>/dev/null || true
           source "./_setup_env.sh" 2>/dev/null || true
           

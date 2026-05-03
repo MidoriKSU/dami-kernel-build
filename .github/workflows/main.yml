@@ -56,8 +56,6 @@ jobs:
       kernel_localversion: ${{ inputs.kernel_localversion }}
       build_epoch: ${{ inputs.build_epoch }}
       build_timestamp: ${{ inputs.build_timestamp }}
-      build_host: ${{ inputs.build_host }}
-      build_user: ${{ inputs.build_user }}
 
   build_midorisu:
     needs: setup
@@ -68,8 +66,6 @@ jobs:
       kernel_localversion: ${{ inputs.kernel_localversion }}
       build_epoch: ${{ inputs.build_epoch }}
       build_timestamp: ${{ inputs.build_timestamp }}
-      build_host: ${{ inputs.build_host }}
-      build_user: ${{ inputs.build_user }}
 
   build_midorixx:
     needs: setup
@@ -80,8 +76,6 @@ jobs:
       kernel_localversion: ${{ inputs.kernel_localversion }}
       build_epoch: ${{ inputs.build_epoch }}
       build_timestamp: ${{ inputs.build_timestamp }}
-      build_host: ${{ inputs.build_host }}
-      build_user: ${{ inputs.build_user }}
 
   release:
     needs: [setup, build_susfs, build_midorisu, build_midorixx]
