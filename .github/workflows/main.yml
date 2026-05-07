@@ -3,6 +3,29 @@ name: Build GKI for Nezha
 on:
   workflow_dispatch:
     inputs:
+      source_mirror:
+        description: 'Kernel Source'
+        required: true
+        default: 'midori'
+        type: choice
+        options:
+          - midori
+          - google
+      sub_level:
+        description: 'Kernel Sublevel'
+        required: true
+        default: '23'
+        type: choice
+        options:
+          - '23'
+      r_version:
+        description: 'Kernel Revision'
+        required: true
+        default: 'r58'
+        type: choice
+        options:
+          - r58
+          - none
       ksu_variant:
         description: 'KernelSU Variant'
         required: true
@@ -10,12 +33,21 @@ on:
         type: choice
         options:
           - all
-          - MidoriSU-SuSFS
           - MidoriSU
           - MidoriXX
       create_release:
         description: 'Publish Release'
         required: false
+        default: true
+        type: boolean
+      enable_susfs:
+        description: 'SuSFS'
+        required: true
+        default: true
+        type: boolean
+      use_droidspaces:
+        description: 'Droidspaces'
+        required: true
         default: true
         type: boolean
       kernel_localversion:
@@ -43,42 +75,91 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       release_tag: ${{ steps.config.outputs.release_tag }}
+      ds_matrix: ${{ steps.config.outputs.ds_matrix }}
+      susfs_matrix: ${{ steps.config.outputs.susfs_matrix }}
+      asb_date: ${{ steps.parse_config.outputs.asb_date }} 
+      r_version: ${{ steps.parse_config.outputs.r_version }}
     steps:
-      - id: config
-        run: echo "release_tag=$(date +'%y%m%d%H%M')" >> $GITHUB_OUTPUT
+      - name: Checkout Repository
+        uses: actions/checkout@v6
 
-  build_susfs:
-    needs: setup
-    if: inputs.ksu_variant == 'all' || inputs.ksu_variant == 'MidoriSU-SuSFS'
-    uses: ./.github/workflows/build-susfs.yml
-    with:
-      sub_level: '23'
-      kernel_localversion: ${{ inputs.kernel_localversion }}
-      build_epoch: ${{ inputs.build_epoch }}
-      build_timestamp: ${{ inputs.build_timestamp }}
+      - id: config
+        run: |
+          echo "release_tag=$(date +'%y%m%d%H%M')" >> $GITHUB_OUTPUT
+          if [ "${{ inputs.use_droidspaces }}" == "true" ]; then
+            echo 'ds_matrix=[false, true]' >> $GITHUB_OUTPUT
+          else
+            echo 'ds_matrix=[false]' >> $GITHUB_OUTPUT
+          fi
+          if [ "${{ inputs.enable_susfs }}" == "true" ]; then
+            echo 'susfs_matrix=[false, true]' >> $GITHUB_OUTPUT
+          else
+            echo 'susfs_matrix=[false]' >> $GITHUB_OUTPUT
+          fi
+
+      - id: parse_config
+        name: Validate and Resolve Kernel Config
+        run: |
+          SUB_LEVEL="${{ inputs.sub_level }}"
+          INPUT_R="${{ inputs.r_version }}"
+          CONFIG_FILE=".github/config/kernel_versions.json"
+          CONFIG=$(jq -c '.["'$SUB_LEVEL'"]' "$CONFIG_FILE")
+          if [ "$CONFIG" == "null" ] || [ -z "$CONFIG" ]; then
+            echo "::error::Sub level $SUB_LEVEL is not defined in $CONFIG_FILE!"
+            exit 1
+          fi
+          ASB_DATE=$(echo "$CONFIG" | jq -r '.asb_date')
+          DEFAULT_R=$(echo "$CONFIG" | jq -r '.default_r')
+          IS_SUPPORTED=$(echo "$CONFIG" | jq -r '.supported_r | index("'$INPUT_R'")')
+          if [ "$IS_SUPPORTED" != "null" ]; then
+            FINAL_R="$INPUT_R"
+          else
+            echo "::warning::Revision '$INPUT_R' is NOT supported for sub_level $SUB_LEVEL. Gracefully falling back to default: '$DEFAULT_R'."
+            FINAL_R="$DEFAULT_R"
+          fi
+          echo "asb_date=$ASB_DATE" >> $GITHUB_OUTPUT
+          echo "r_version=$FINAL_R" >> $GITHUB_OUTPUT
 
   build_midorisu:
+    name: "Build MidoriSU (DS: ${{ matrix.droidspaces }} | SuSFS: ${{ matrix.susfs }})"
     needs: setup
     if: inputs.ksu_variant == 'all' || inputs.ksu_variant == 'MidoriSU'
+    strategy:
+      matrix:
+        droidspaces: ${{ fromJson(needs.setup.outputs.ds_matrix) }}
+        susfs: ${{ fromJson(needs.setup.outputs.susfs_matrix) }}
     uses: ./.github/workflows/build-midorisu.yml
     with:
-      sub_level: '23'
+      source_mirror: ${{ inputs.source_mirror }}
+      sub_level: ${{ inputs.sub_level }}
+      asb_date: ${{ needs.setup.outputs.asb_date }}
+      r_version: ${{ needs.setup.outputs.r_version }}
+      use_droidspaces: ${{ matrix.droidspaces }}
+      use_susfs: ${{ matrix.susfs }}
       kernel_localversion: ${{ inputs.kernel_localversion }}
       build_epoch: ${{ inputs.build_epoch }}
       build_timestamp: ${{ inputs.build_timestamp }}
 
   build_midorixx:
+    name: "Build MidoriXX (DS: ${{ matrix.droidspaces }})"
     needs: setup
     if: inputs.ksu_variant == 'all' || inputs.ksu_variant == 'MidoriXX'
+    strategy:
+      matrix:
+        droidspaces: ${{ fromJson(needs.setup.outputs.ds_matrix) }}
     uses: ./.github/workflows/build-midorixx.yml
     with:
-      sub_level: '23'
+      source_mirror: ${{ inputs.source_mirror }}
+      sub_level: ${{ inputs.sub_level }}
+      asb_date: ${{ needs.setup.outputs.asb_date }}
+      r_version: ${{ needs.setup.outputs.r_version }}
+      use_droidspaces: ${{ matrix.droidspaces }}
       kernel_localversion: ${{ inputs.kernel_localversion }}
       build_epoch: ${{ inputs.build_epoch }}
       build_timestamp: ${{ inputs.build_timestamp }}
 
   release:
-    needs: [setup, build_susfs, build_midorisu, build_midorixx]
+    needs: [setup, build_midorisu, build_midorixx]
     if: |
       always() && 
       inputs.create_release == true &&
@@ -87,8 +168,14 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      R_SUFFIX: ${{ needs.setup.outputs.r_version != 'none' && format('_{0}', needs.setup.outputs.r_version) || '' }}
+      BASE_URL: ${{ inputs.source_mirror == 'google' && 'https://android.googlesource.com/kernel/common/+archive/refs/tags' || 'https://github.com/MidoriKSU/dami-kernel-build/releases/download/1.0' }}
+      MIRROR_NAME: ${{ inputs.source_mirror == 'google' && 'Google Official' || 'Midori Mirror' }}
+
     steps:
       - uses: actions/checkout@v6
+      
       - uses: actions/download-artifact@v8
         with:
           pattern: 'Kernel-*'
@@ -106,6 +193,10 @@ jobs:
         with:
           tag_name: "${{ needs.setup.outputs.release_tag }}"
           name: "Kernel Midori Build (${{ needs.setup.outputs.release_tag }})"
+          body: |
+            - **Kernel Source**: [${{ env.MIRROR_NAME }}](${{ env.BASE_URL }}/android16-6.12-${{ needs.setup.outputs.asb_date }}${{ env.R_SUFFIX }}.tar.gz)
+            - **SuSFS**: ${{ inputs.enable_susfs && '✅ (*-SuSFS)' || '❌' }}
+            - **Droidspaces**: ${{ inputs.use_droidspaces && '✅ (*-Droidspaces)' || '❌' }}
           files: |
             release_zips/*.zip
             release_zips/*.apk

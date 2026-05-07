@@ -14,6 +14,10 @@ inputs:
     description: 'Set to "true" to inject SuSFS configs'
     required: false
     default: 'false'
+  use_droidspaces:
+    description: 'Set to "true" to inject Droidspaces configs'
+    required: false
+    default: 'false'
   localversion:
     description: 'Kernel Localversion String'
     required: true
@@ -32,9 +36,7 @@ runs:
         cat >> $DEFCONFIG <<-'EOF'
         # Core Bootability & Performance
         CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y
-        CONFIG_RUST=y
         CONFIG_LOG_BUF_SHIFT=21
-        CONFIG_ANDROID_BINDER_IPC_RUST=m
         CONFIG_TMPFS_XATTR=y
         CONFIG_TMPFS_POSIX_ACL=y
 
@@ -44,9 +46,6 @@ runs:
         CONFIG_IP6_NF_MATCH_HL=y
         CONFIG_TCP_CONG_ADVANCED=y
         CONFIG_TCP_CONG_BBR=y
-        CONFIG_NET_SCH_FQ=y
-
-        # IPSet & TProxy Suite
         CONFIG_IP_SET=y
         CONFIG_NETFILTER_XT_SET=y
         CONFIG_IP_SET_MAX=65534
@@ -66,18 +65,12 @@ runs:
         CONFIG_IP_SET_HASH_NETPORT=y
         CONFIG_IP_SET_HASH_NETIFACE=y
         CONFIG_IP_SET_LIST_SET=y
-        CONFIG_NETFILTER_XT_TARGET_TPROXY=y
         CONFIG_NETFILTER_XT_TARGET_REDIRECT=y
-        CONFIG_NETFILTER_XT_MATCH_SOCKET=y
-        CONFIG_NETFILTER_XT_MATCH_MARK=y
+        CONFIG_NETFILTER_XT_TARGET_REJECT=y
         CONFIG_NETFILTER_XT_MATCH_ADDRTYPE=y
-        CONFIG_NETFILTER_XT_MATCH_IPRANGE=y
-        CONFIG_NETFILTER_XT_MATCH_OWNER=y
-        CONFIG_NETFILTER_XT_MATCH_MAC=y
-        CONFIG_NETFILTER_XT_MATCH_CONNTRACK=y
+        CONFIG_NETFILTER_XT_MATCH_RECENT=y
         CONFIG_NETFILTER_XT_MARK=y
         CONFIG_NETFILTER_XT_CONNMARK=y
-        CONFIG_NETFILTER_XT_TARGET_CONNMARK=y
         CONFIG_IP6_NF_NAT=y
         CONFIG_IP6_NF_TARGET_REDIRECT=y
         EOF
@@ -117,6 +110,17 @@ runs:
         CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y
         CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
         CONFIG_KSU_SUSFS_SUS_MAP=y
+        EOF
+        fi
+        
+        # Droidspaces Injection
+        if [ "${{ inputs.use_droidspaces }}" = "true" ]; then
+          cat >> $DEFCONFIG <<-'EOF'
+        CONFIG_SYSVIPC=y
+        CONFIG_POSIX_MQUEUE=y
+        CONFIG_IPC_NS=y
+        CONFIG_PID_NS=y
+        CONFIG_DEVTMPFS=y
         EOF
         fi
         

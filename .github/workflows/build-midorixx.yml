@@ -3,9 +3,21 @@ name: Module - Build MidoriXX
 on:
   workflow_call:
     inputs:
+      source_mirror:
+        required: true
+        type: string
       sub_level:
         required: true
         type: string
+      asb_date:
+        required: true
+        type: string
+      r_version:
+        required: true
+        type: string
+      use_droidspaces:
+        required: true
+        type: boolean
       kernel_localversion:
         required: true
         type: string
@@ -23,6 +35,9 @@ jobs:
     env:
       ANDROID_VERSION: 'android16'
       KERNEL_VERSION: '6.12'
+      ASB_DATE: ${{ inputs.asb_date }}
+      R_SUFFIX: ${{ inputs.r_version != 'none' && format('_{0}', inputs.r_version) || '' }}
+      DS_SUFFIX: ${{ inputs.use_droidspaces && '-Droidspaces' || '' }}
 
     steps:
       - name: Checkout Workflow Repo (For Patches)
@@ -44,11 +59,15 @@ jobs:
       - name: Initialize Workspace & Toolchains
         run: |
           mkdir -p kernel_workspace && cd kernel_workspace
-          (aria2c -s16 -x16 -k1M "https://github.com/MidoriKSU/dami-kernel-build/releases/download/1.0/android16-6.12-2025-06.tar.gz" -o common.tar.gz && mkdir -p common && tar -xzf common.tar.gz -C common && rm common.tar.gz) &
-          (aria2c -s16 -x16 -k1M "https://github.com/MidoriKSU/dami-kernel-build/releases/download/1.0/clang-r536225.tar.gz" -o clang.tar.gz && mkdir -p clang && tar -xzf clang.tar.gz -C clang && rm clang.tar.gz) &
-          (aria2c -s16 -x16 -k1M "https://github.com/MidoriKSU/dami-kernel-build/releases/download/1.0/build-tools.tar.gz" -o build-tools.tar.gz && mkdir -p build-tools && tar -xzf build-tools.tar.gz -C build-tools && rm build-tools.tar.gz) &
-          (aria2c -s16 -x16 -k1M "https://github.com/MidoriKSU/dami-kernel-build/releases/download/1.0/clang-tools.tar.gz" -o clang-tools.tar.gz && mkdir -p clang-tools && tar -xzf clang-tools.tar.gz -C clang-tools && rm clang-tools.tar.gz) &
-          (aria2c -s16 -x16 -k1M "https://github.com/MidoriKSU/dami-kernel-build/releases/download/1.0/rust-1.82.0.tar.gz" -o rust.tar.gz && mkdir -p rust && tar -xzf rust.tar.gz -C rust && rm rust.tar.gz) &
+          KERNEL_TAR="${ANDROID_VERSION}-${KERNEL_VERSION}-${ASB_DATE}${R_SUFFIX}.tar.gz"
+          MIDORI_MIRROR="https://github.com/MidoriKSU/dami-kernel-build/releases/download/1.0"
+          GOOGLE_MIRROR="https://android.googlesource.com/kernel/common/+archive/refs/tags"
+          KERNEL_BASE_URL=$([ "${{ inputs.source_mirror }}" == "google" ] && echo "$GOOGLE_MIRROR" || echo "$MIDORI_MIRROR")
+          (aria2c -s16 -x16 -k1M "$KERNEL_BASE_URL/$KERNEL_TAR" -o common.tar.gz && mkdir -p common && tar -xzf common.tar.gz -C common && rm common.tar.gz) &
+          (aria2c -s16 -x16 -k1M "$MIDORI_MIRROR/clang-r536225.tar.gz" -o clang.tar.gz && mkdir -p clang && tar -xzf clang.tar.gz -C clang && rm clang.tar.gz) &
+          (aria2c -s16 -x16 -k1M "$MIDORI_MIRROR/build-tools.tar.gz" -o build-tools.tar.gz && mkdir -p build-tools && tar -xzf build-tools.tar.gz -C build-tools && rm build-tools.tar.gz) &
+          (aria2c -s16 -x16 -k1M "$MIDORI_MIRROR/clang-tools.tar.gz" -o clang-tools.tar.gz && mkdir -p clang-tools && tar -xzf clang-tools.tar.gz -C clang-tools && rm clang-tools.tar.gz) &
+          (aria2c -s16 -x16 -k1M "$MIDORI_MIRROR/rust-1.82.0.tar.gz" -o rust.tar.gz && mkdir -p rust && tar -xzf rust.tar.gz -C rust && rm rust.tar.gz) &
           wait
           sed -i 's/ -dirty//g' common/scripts/setlocalversion
 
@@ -56,8 +75,8 @@ jobs:
         run: |
           cd kernel_workspace/common
           git clone --depth=1 --branch=main https://github.com/MidoriKSU/KernelSU.git KernelSU
-          chmod +x ${{ github.workspace }}/.github/scripts/_setup_midorixx.sh
-          bash ${{ github.workspace }}/.github/scripts/_setup_midorixx.sh
+          chmod +x "${{ github.workspace }}/.github/scripts/_setup_midorixx.sh"
+          bash "${{ github.workspace }}/.github/scripts/_setup_midorixx.sh"
           ln -sf ../KernelSU/kernel drivers/kernelsu
           grep -q "kernelsu" drivers/Makefile || echo 'obj-$(CONFIG_KSU) += kernelsu/' >> drivers/Makefile
           grep -q "kernelsu" drivers/Kconfig || sed -i '/endmenu/i source "drivers/kernelsu/Kconfig"' drivers/Kconfig
@@ -65,10 +84,18 @@ jobs:
       - name: "Patching: MidoriXX (Security & Scope Hooks)"
         run: |
           cd kernel_workspace/common
-          patch -p1 -l --fuzz=3 < "${{ github.workspace }}/.github/patches/xxksu/manual-security-hooks-v1.9.patch"
-          patch -p1 -l --fuzz=3 < "${{ github.workspace }}/.github/patches/xxksu/scope-min-manual-hooks-v2.0.patch"
+          patch -p1 -l --fuzz=3 < "${{ github.workspace }}/.github/patches/manual-security-hooks-v1.9.patch"
+          patch -p1 -l --fuzz=3 < "${{ github.workspace }}/.github/patches/scope-min-manual-hooks-v2.0.patch"
 
-      - name: Inject Defconfig Flags
+      - name: Integrate Droidspaces Support
+        if: inputs.use_droidspaces
+        run: |
+          cd kernel_workspace/common
+          patch -p1 --forward < "${{ github.workspace }}/.github/patches/fix_sysvipc_kabi.patch" || true
+          chmod +x "${{ github.workspace }}/.github/scripts/_setup_droidspaces.sh"
+          bash "${{ github.workspace }}/.github/scripts/_setup_droidspaces.sh"
+
+      - name: Inject Kernel Configs
         uses: ./.github/actions/kernel-config
         with:
           defconfig_path: "kernel_workspace/common/arch/arm64/configs/gki_defconfig"
@@ -76,6 +103,7 @@ jobs:
           variant: "MidoriXX"
           enable_susfs: "false"
           localversion: ${{ inputs.kernel_localversion }}
+          use_droidspaces: ${{ inputs.use_droidspaces }}
 
       - name: Compile Kernel
         run: |
@@ -98,7 +126,7 @@ jobs:
           export ARCH=arm64 SUBARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
           
-          cp ${{ github.workspace }}/.github/scripts/_setup_env.sh ./ 2>/dev/null || true
+          cp "${{ github.workspace }}/.github/scripts/_setup_env.sh" ./ 2>/dev/null || true
           chmod 777 ./*.sh 2>/dev/null || true
           source "./_setup_env.sh" 2>/dev/null || true
           
@@ -115,16 +143,17 @@ jobs:
           cd kernel_workspace
           IMAGE="./common/out/arch/arm64/boot/Image"
           [ -f "$IMAGE" ] || (echo "Binary Missing!" && exit 1)
-          git clone https://github.com/yapixel/AnyKernel3 --depth=1
+          git clone https://github.com/midori01/AnyKernel3 -b xiaomi --depth=1
           cp "$IMAGE" ./AnyKernel3/ && cd AnyKernel3
           rm -rf .git
-          BUILD_DATE="$(date +'%y%m%d')"
-          ZIP_NAME="MidoriXX_kernel-android16-6.12.${{ inputs.sub_level }}.zip"
+          ZIP_NAME="MidoriXX_Kernel-${KERNEL_VERSION}.${{ inputs.sub_level }}${R_SUFFIX}${DS_SUFFIX}.zip"
+          ARTIFACT_NAME="Kernel-MidoriXX${DS_SUFFIX}${R_SUFFIX}"
           zip -r9 "../$ZIP_NAME" *
           echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_ENV
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v7.0.0
         with:
-          name: Kernel-MidoriXX
+          name: ${{ env.ARTIFACT_NAME }}
           path: kernel_workspace/${{ env.ZIP_NAME }}
