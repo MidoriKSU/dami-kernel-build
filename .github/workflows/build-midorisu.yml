@@ -30,6 +30,12 @@ on:
       build_timestamp:
         required: true
         type: string
+      build_user:
+        required: true
+        type: string
+      build_host:
+        required: true
+        type: string
 
 jobs:
   build:
@@ -154,8 +160,8 @@ jobs:
           
           export SOURCE_DATE_EPOCH="${{ inputs.build_epoch }}"
           export KBUILD_BUILD_TIMESTAMP="${{ inputs.build_timestamp }}"
-          export KBUILD_BUILD_HOST="build-host"
-          export KBUILD_BUILD_USER="kleaf"
+          export KBUILD_BUILD_HOST="${{ inputs.build_host }}"
+          export KBUILD_BUILD_USER="${{ inputs.build_user }}"
           
           make -j$(nproc --all) O=out ${TOOL_ARGS} gki_defconfig
           make -j$(nproc --all) O=out ${TOOL_ARGS} Image

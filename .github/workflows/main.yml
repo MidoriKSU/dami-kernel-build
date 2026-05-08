@@ -60,6 +60,16 @@ on:
         required: true
         default: 'Wed Nov 26 11:16:14 UTC 2025'
         type: string
+      build_user:
+        description: 'Spoof Build User'
+        required: true
+        default: 'kleaf'
+        type: string
+      build_host:
+        description: 'Spoof Build Host'
+        required: true
+        default: 'build-host'
+        type: string
       build_epoch:
         description: 'SOURCE_DATE_EPOCH'
         required: true
@@ -139,6 +149,8 @@ jobs:
       kernel_localversion: ${{ inputs.kernel_localversion }}
       build_epoch: ${{ inputs.build_epoch }}
       build_timestamp: ${{ inputs.build_timestamp }}
+      build_user: ${{ inputs.build_user }}
+      build_host: ${{ inputs.build_host }}
 
   build_midorixx:
     name: "Build MidoriXX (DS: ${{ matrix.droidspaces }})"
@@ -157,6 +169,8 @@ jobs:
       kernel_localversion: ${{ inputs.kernel_localversion }}
       build_epoch: ${{ inputs.build_epoch }}
       build_timestamp: ${{ inputs.build_timestamp }}
+      build_user: ${{ inputs.build_user }}
+      build_host: ${{ inputs.build_host }}
 
   release:
     needs: [setup, build_midorisu, build_midorixx]
@@ -198,7 +212,7 @@ jobs:
             - **Kernel Version**: `android16-6.12.${{ inputs.sub_level }}${{ env.R_SUFFIX }}`
             - **Kernel Name (Spoofed)**: `6.12.${{ inputs.sub_level }}${{ inputs.kernel_localversion }}`
             - **Build Time (Spoofed)**: `${{ inputs.build_timestamp }}`
-            - **Builder (Spoofed)**: `kleaf@build-host`
+            - **Builder (Spoofed)**: `${{ inputs.build_user }}@${{ inputs.build_host }}`
             - **TMPFS**: ✅
             - **IPSET**: ✅
             - **SuSFS**: ${{ inputs.enable_susfs && '✅ `(*-SuSFS)`' || '❌' }}
