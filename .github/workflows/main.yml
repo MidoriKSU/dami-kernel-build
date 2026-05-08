@@ -195,8 +195,14 @@ jobs:
           name: "Kernel Midori Build (${{ needs.setup.outputs.release_tag }})"
           body: |
             - **Kernel Source**: [${{ env.MIRROR_NAME }}](${{ env.BASE_URL }}/android16-6.12-${{ needs.setup.outputs.asb_date }}${{ env.R_SUFFIX }}.tar.gz)
-            - **SuSFS**: ${{ inputs.enable_susfs && '✅ (*-SuSFS)' || '❌' }}
-            - **Droidspaces**: ${{ inputs.use_droidspaces && '✅ (*-Droidspaces)' || '❌' }}
+            - **Kernel Version**: `android16-6.12.${{ inputs.sub_level }}${{ env.R_SUFFIX }}`
+            - **Kernel Name (Spoofed)**: `6.12.${{ inputs.sub_level }}${{ inputs.kernel_localversion }}`
+            - **Build Time (Spoofed)**: `${{ inputs.build_timestamp }}`
+            - **Builder (Spoofed)**: `kleaf@build-host`
+            - **TMPFS**: ✅
+            - **IPSET**: ✅
+            - **SuSFS**: ${{ inputs.enable_susfs && '✅ `(*-SuSFS)`' || '❌' }}
+            - **Droidspaces**: ${{ inputs.use_droidspaces && '✅ `(*-Droidspaces)`' || '❌' }}
           files: |
             release_zips/*.zip
             release_zips/*.apk
