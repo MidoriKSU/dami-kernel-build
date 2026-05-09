@@ -1,0 +1,32 @@
+name: Module - Build Scene Hider eBPF
+
+on:
+  workflow_call:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Workflows
+        uses: actions/checkout@v6
+
+      - name: Download vmlinux Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: 'vmlinux-*'
+          path: downloaded_vmlinux
+
+      - name: Checkout Scene-Port-Hider Project
+        run: |
+          git clone https://github.com/Andrea-lyz/Scene-Port-Hider-by-eBPF.git ebpf_project
+
+      - name: Build eBPF Module
+        run: |
+          chmod +x .github/scripts/_build_ebpf_module.sh
+          .github/scripts/_build_ebpf_module.sh "$PWD/downloaded_vmlinux" "$PWD/ebpf_project"
+
+      - name: Upload eBPF Artifact
+        uses: actions/upload-artifact@v7.0.0
+        with:
+          name: ScenePortHider-eBPF
+          path: ebpf_project/output/*.zip

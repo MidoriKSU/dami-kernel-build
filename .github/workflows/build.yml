@@ -1,4 +1,4 @@
-name: Build GKI for Nezha
+name: Build Kernel
 
 on:
   workflow_dispatch:
@@ -47,6 +47,11 @@ on:
         type: boolean
       use_droidspaces:
         description: 'Droidspaces'
+        required: true
+        default: true
+        type: boolean
+      build_scene_hider:
+        description: 'eBPF (Scene Hider)'
         required: true
         default: true
         type: boolean
@@ -146,6 +151,7 @@ jobs:
       r_version: ${{ needs.setup.outputs.r_version }}
       use_droidspaces: ${{ matrix.droidspaces }}
       use_susfs: ${{ matrix.susfs }}
+      build_ebpf: ${{ inputs.build_scene_hider }}
       kernel_localversion: ${{ inputs.kernel_localversion }}
       build_epoch: ${{ inputs.build_epoch }}
       build_timestamp: ${{ inputs.build_timestamp }}
@@ -166,14 +172,25 @@ jobs:
       asb_date: ${{ needs.setup.outputs.asb_date }}
       r_version: ${{ needs.setup.outputs.r_version }}
       use_droidspaces: ${{ matrix.droidspaces }}
+      build_ebpf: ${{ inputs.build_scene_hider }}
       kernel_localversion: ${{ inputs.kernel_localversion }}
       build_epoch: ${{ inputs.build_epoch }}
       build_timestamp: ${{ inputs.build_timestamp }}
       build_user: ${{ inputs.build_user }}
       build_host: ${{ inputs.build_host }}
 
-  release:
+  build_scene_hider:
+    name: "Build Scene Port Hider (eBPF)"
     needs: [setup, build_midorisu, build_midorixx]
+    if: |
+      always() && 
+      inputs.build_scene_hider == true &&
+      !contains(needs.*.result, 'failure') && 
+      !contains(needs.*.result, 'cancelled')
+    uses: ./.github/workflows/build-ebpf.yml
+
+  release:
+    needs: [setup, build_midorisu, build_midorixx, build_scene_hider]
     if: |
       always() && 
       inputs.create_release == true &&
@@ -196,6 +213,12 @@ jobs:
           path: release_zips
           merge-multiple: true
           
+      - uses: actions/download-artifact@v8
+        if: inputs.build_scene_hider == true
+        with:
+          name: ScenePortHider-eBPF
+          path: release_zips
+          
       - name: Download MidoriSU Manager APK
         env:
           GH_TOKEN: ${{ github.token }}
@@ -214,9 +237,11 @@ jobs:
             - **Build Time (Spoofed)**: `${{ inputs.build_timestamp }}`
             - **Builder (Spoofed)**: `${{ inputs.build_user }}@${{ inputs.build_host }}`
             - **TMPFS**: ✅
+            - **BBR**: ✅
             - **IPSET**: ✅
             - **SuSFS**: ${{ inputs.enable_susfs && '✅ `(*-SuSFS)`' || '❌' }}
-            - **Droidspaces**: ${{ inputs.use_droidspaces && '✅ `(*-Droidspaces)`' || '❌' }}
+            - **Docker**: ${{ inputs.use_droidspaces && '✅ `(*-Droidspaces)`' || '❌' }}
+            - **eBPF (Scene Hider)**: ${{ inputs.build_scene_hider && '✅' || '❌' }}
           files: |
             release_zips/*.zip
             release_zips/*.apk

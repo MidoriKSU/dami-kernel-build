@@ -23,7 +23,7 @@
 export ROOT_DIR=$(readlink -f $PWD)
 
 if [ "$KLEAF_INTERNAL_NO_BUILD_CONFIG" != "1" ]; then
-    export BUILD_CONFIG=${BUILD_CONFIG:-build.config}
+    export BUILD_CONFIG=${BUILD_CONFIG:-build.config.gki}
 fi
 
 # Helper function to let build.config files add command to PRE_DEFCONFIG_CMDS, EXTRA_CMDS, etc.
@@ -275,3 +275,29 @@ function check_defconfig() {
     fi
 }
 export -f check_defconfig
+
+# MidoriSU custom build environment appended
+export WORK_DIR="$(dirname "${ROOT_DIR}")"
+export PATH="${WORK_DIR}/clang/bin:${PATH}"
+export PATH="${WORK_DIR}/build-tools/bin:${PATH}"
+export PATH="${WORK_DIR}/clang-tools/bin:${PATH}"
+export PATH="${WORK_DIR}/rust/bin:${PATH}"
+export LIBCLANG_PATH="${WORK_DIR}/clang/lib"
+
+COMMON_REAL_PATH=$(readlink -f "${ROOT_DIR}")
+ROOT_REAL_PATH=$(dirname "${COMMON_REAL_PATH}")
+
+export KCFLAGS+=" -fdebug-prefix-map=${ROOT_REAL_PATH}=."
+export KCFLAGS+=" -fmacro-prefix-map=${ROOT_REAL_PATH}=."
+export KCFLAGS+=" -ffile-prefix-map=${ROOT_REAL_PATH}=."
+export KCFLAGS+=" -no-canonical-prefixes -O2 -pipe -Wno-error -fno-stack-protector -D__ANDROID_COMMON_KERNEL__"
+
+export LLVM=1
+export LLVM_IAS=1
+export ARCH=arm64
+export SUBARCH=arm64
+export CROSS_COMPILE=aarch64-linux-gnu-
+
+tool_args+=("LLVM=1")
+tool_args+=("LLVM_IAS=1")
+export TOOL_ARGS="${tool_args[@]}"
