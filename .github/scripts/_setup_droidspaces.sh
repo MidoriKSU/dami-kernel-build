@@ -3,6 +3,7 @@
 echo "Injecting EXPORT_SYMBOL for Droidspaces..."
 
 if [ ! -d "ipc" ]; then
+    echo "ipc directory not found, aborting Droidspaces setup" >&2
     exit 1
 fi
 

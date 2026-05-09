@@ -17,8 +17,7 @@ jobs:
           path: downloaded_vmlinux
 
       - name: Checkout Scene-Port-Hider Project
-        run: |
-          git clone https://github.com/Andrea-lyz/Scene-Port-Hider-by-eBPF.git ebpf_project
+        run: git clone https://github.com/Andrea-lyz/Scene-Port-Hider-by-eBPF.git ebpf_project
 
       - name: Build eBPF Module
         run: |

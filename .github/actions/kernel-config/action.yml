@@ -8,7 +8,7 @@ inputs:
     description: 'Path to the build.config.gki file'
     required: true
   variant:
-    description: 'KSU variant'
+    description: 'KSU variant (MidoriSU or MidoriXX)'
     required: true
   enable_susfs:
     description: 'Set to "true" to inject SuSFS configs'
@@ -34,13 +34,10 @@ runs:
         echo "CONFIG_LOCALVERSION=\"${{ inputs.localversion }}\"" >> $DEFCONFIG
 
         cat >> $DEFCONFIG <<-'EOF'
-        # Core Bootability & Performance
         CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y
         CONFIG_LOG_BUF_SHIFT=21
         CONFIG_TMPFS_XATTR=y
         CONFIG_TMPFS_POSIX_ACL=y
-
-        # Networking Configuration
         CONFIG_IP_NF_TARGET_TTL=y
         CONFIG_IP6_NF_TARGET_HL=y
         CONFIG_IP6_NF_MATCH_HL=y
@@ -75,7 +72,6 @@ runs:
         CONFIG_IP6_NF_TARGET_REDIRECT=y
         EOF
 
-        # Variant-Specific KSU Logic
         if [ "${{ inputs.variant }}" = "MidoriXX" ]; then
           cat >> $DEFCONFIG <<-'EOF'
         CONFIG_KSU=y
@@ -84,7 +80,7 @@ runs:
         CONFIG_KSU_TAMPER_SYSCALL_TABLE=n
         CONFIG_KSU_KPROBES_KSUD=n
         EOF
-        elif [[ "${{ inputs.variant }}" == *"MidoriSU"* ]]; then
+        elif [ "${{ inputs.variant }}" = "MidoriSU" ]; then
           cat >> $DEFCONFIG <<-'EOF'
         CONFIG_KSU=y
         CONFIG_KPROBES=y
@@ -92,7 +88,6 @@ runs:
         EOF
         fi
 
-        # SuSFS Injection
         if [ "${{ inputs.enable_susfs }}" = "true" ]; then
           cat >> $DEFCONFIG <<-'EOF'
         CONFIG_KSU_SUSFS=y
@@ -113,7 +108,6 @@ runs:
         EOF
         fi
         
-        # Droidspaces Injection
         if [ "${{ inputs.use_droidspaces }}" = "true" ]; then
           cat >> $DEFCONFIG <<-'EOF'
         CONFIG_SYSVIPC=y
@@ -124,5 +118,4 @@ runs:
         EOF
         fi
         
-        # Bypass GKI Integrity Checks
         sed -i 's/check_defconfig//' "${{ inputs.build_config_path }}" || true

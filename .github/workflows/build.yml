@@ -41,7 +41,7 @@ on:
         default: true
         type: boolean
       enable_susfs:
-        description: 'SuSFS'
+        description: 'SuSFS (MidoriSU)'
         required: true
         default: true
         type: boolean
@@ -92,7 +92,7 @@ jobs:
       release_tag: ${{ steps.config.outputs.release_tag }}
       ds_matrix: ${{ steps.config.outputs.ds_matrix }}
       susfs_matrix: ${{ steps.config.outputs.susfs_matrix }}
-      asb_date: ${{ steps.parse_config.outputs.asb_date }} 
+      asb_date: ${{ steps.parse_config.outputs.asb_date }}
       r_version: ${{ steps.parse_config.outputs.r_version }}
     steps:
       - name: Checkout Repository
@@ -129,22 +129,23 @@ jobs:
           if [ "$IS_SUPPORTED" != "null" ]; then
             FINAL_R="$INPUT_R"
           else
-            echo "::warning::Revision '$INPUT_R' is NOT supported for sub_level $SUB_LEVEL. Gracefully falling back to default: '$DEFAULT_R'."
+            echo "::warning::Revision '$INPUT_R' is NOT supported for sub_level $SUB_LEVEL. Fallback to '$DEFAULT_R'."
             FINAL_R="$DEFAULT_R"
           fi
           echo "asb_date=$ASB_DATE" >> $GITHUB_OUTPUT
           echo "r_version=$FINAL_R" >> $GITHUB_OUTPUT
 
   build_midorisu:
-    name: "Build MidoriSU (DS: ${{ matrix.droidspaces }} | SuSFS: ${{ matrix.susfs }})"
+    name: "MidoriSU (DS: ${{ matrix.droidspaces }} | SuSFS: ${{ matrix.susfs }})"
     needs: setup
     if: inputs.ksu_variant == 'all' || inputs.ksu_variant == 'MidoriSU'
     strategy:
       matrix:
         droidspaces: ${{ fromJson(needs.setup.outputs.ds_matrix) }}
         susfs: ${{ fromJson(needs.setup.outputs.susfs_matrix) }}
-    uses: ./.github/workflows/build-midorisu.yml
+    uses: ./.github/workflows/build-kernel.yml
     with:
+      variant: 'MidoriSU'
       source_mirror: ${{ inputs.source_mirror }}
       sub_level: ${{ inputs.sub_level }}
       asb_date: ${{ needs.setup.outputs.asb_date }}
@@ -159,19 +160,21 @@ jobs:
       build_host: ${{ inputs.build_host }}
 
   build_midorixx:
-    name: "Build MidoriXX (DS: ${{ matrix.droidspaces }})"
+    name: "MidoriXX (DS: ${{ matrix.droidspaces }})"
     needs: setup
     if: inputs.ksu_variant == 'all' || inputs.ksu_variant == 'MidoriXX'
     strategy:
       matrix:
         droidspaces: ${{ fromJson(needs.setup.outputs.ds_matrix) }}
-    uses: ./.github/workflows/build-midorixx.yml
+    uses: ./.github/workflows/build-kernel.yml
     with:
+      variant: 'MidoriXX'
       source_mirror: ${{ inputs.source_mirror }}
       sub_level: ${{ inputs.sub_level }}
       asb_date: ${{ needs.setup.outputs.asb_date }}
       r_version: ${{ needs.setup.outputs.r_version }}
       use_droidspaces: ${{ matrix.droidspaces }}
+      use_susfs: false
       build_ebpf: ${{ inputs.build_scene_hider }}
       kernel_localversion: ${{ inputs.kernel_localversion }}
       build_epoch: ${{ inputs.build_epoch }}
@@ -180,7 +183,7 @@ jobs:
       build_host: ${{ inputs.build_host }}
 
   build_scene_hider:
-    name: "Build Scene Port Hider (eBPF)"
+    name: "Scene Port Hider (eBPF)"
     needs: [setup, build_midorisu, build_midorixx]
     if: |
       always() && 

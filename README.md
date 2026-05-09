@@ -6,7 +6,7 @@
 ![Kernel](https://img.shields.io/badge/Kernel-GKI_6.12.23-2F363D?style=for-the-badge&logo=linux&logoColor=white)
 ![Architecture](https://img.shields.io/badge/Arch-arm64--v8a-blue?style=for-the-badge)
 
-*Automated GitHub Actions pipeline for building GKI kernels targeting the **Xiaomi 17 Series (Snapdragon 8 Elite Gen 5 / SM8850)**.*
+*Automated GitHub Actions pipeline for building GKI kernels targeting the **Snapdragon 8 Elite Gen 5 (SM8850)**.*
 
 </div>
 
@@ -21,12 +21,12 @@ This repository provides a highly modular, dispatcher-based workflow that builds
 
 | Property | Specification |
 | :--- | :--- |
-| **Device** | Xiaomi 17 Series |
-| **SoC** | Snapdragon 8 Elite Gen 5 (`SM8850`) |
-| **Android** | Android 16 |
-| **Kernel** | GKI `6.12.23` |
+| **Device** | `Xiaomi 17 Ultra (Nezha)` |
+| **SoC** | `Snapdragon 8 Elite Gen 5 (SM8850)` |
+| **Android** | `16 (Baklava)` |
+| **Kernel** | `android16-6.12-2025-06 (6.12.23)` |
 | **Architecture** | `arm64-v8a` |
-| **Compiler** | LLVM Clang 19 (`r536225`) |
+| **Compiler** | `LLVM Clang 19 (r536225)` |
 | **Rust** | `1.82.0` |
 
 ---

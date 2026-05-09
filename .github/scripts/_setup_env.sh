@@ -43,11 +43,6 @@ if [ -n "${KLEAF_INTERNAL_PREFERRED_KERNEL_DIR}" ]; then
 fi
 # for case that KERNEL_DIR is not specified in environment
 if [ -z "${KERNEL_DIR}" ] && [ -n "${BUILD_CONFIG}" ]; then
-    # for the case that KERNEL_DIR is not specified in the BUILD_CONFIG file
-    # use the directory of the build config file as KERNEL_DIR
-    # for the case that KERNEL_DIR is specified in the BUILD_CONFIG file,
-    # or via the config files sourced, the value of KERNEL_DIR
-    # set here would be overwritten, and the specified value would be used.
     build_config_path=$(readlink -f ${ROOT_DIR}/${BUILD_CONFIG})
     real_root_dir=${build_config_path%%${BUILD_CONFIG}}
     build_config_dir=$(dirname ${build_config_path})
@@ -71,7 +66,6 @@ set +a
 
 if [ -n "${KLEAF_INTERNAL_PREFERRED_KERNEL_DIR}" ]; then
   if [ "${KERNEL_DIR}" != "${KLEAF_INTERNAL_PREFERRED_KERNEL_DIR}" ]; then
-    # If kernel_build.makefile is set and inconsistent with the value in build config, print a error.
     echo "ERROR: kernel_build.makefile is set to be below ${KLEAF_INTERNAL_PREFERRED_KERNEL_DIR}," >&2
     echo "  But it is not the same as KERNEL_DIR=${KERNEL_DIR}." >&2
     echo "  Please delete KERNEL_DIR=${KERNEL_DIR} from ${BUILD_CONFIG}." >&2
@@ -79,7 +73,6 @@ if [ -n "${KLEAF_INTERNAL_PREFERRED_KERNEL_DIR}" ]; then
   fi
   unset KLEAF_INTERNAL_PREFERRED_KERNEL_DIR
 else
-  # If kernel_build.makefile is not set, print a warning
   echo "WARNING: kernel_build.makefile is not set, and KERNEL_DIR=${KERNEL_DIR}. " >&2
   echo "  To suppress this warning, set:" >&2
   echo '    kernel_build(makefile = "//'"${KERNEL_DIR}"':Makefile")' >&2
@@ -89,11 +82,8 @@ fi
 # For incremental kernel development, it is beneficial to trade certain
 # optimizations for faster builds.
 if [[ -n "${FAST_BUILD}" ]]; then
-  # Decrease lz4 compression level to significantly speed up ramdisk compression.
   : ${LZ4_RAMDISK_COMPRESS_ARGS:="--fast"}
-  # Use ThinLTO for fast incremental compiles
   : ${LTO:="thin"}
-  # skip installing kernel headers
   : ${SKIP_CP_KERNEL_HDR:="1"}
 fi
 
@@ -109,8 +99,6 @@ export LC_ALL=C
 if [ -z "${SOURCE_DATE_EPOCH}" ]; then
   if [[ -n "${KLEAF_SOURCE_DATE_EPOCHS}" ]]; then
     export SOURCE_DATE_EPOCH=$(extract_git_metadata "${KLEAF_SOURCE_DATE_EPOCHS}" "${KERNEL_DIR}" SOURCE_DATE_EPOCH)
-    # Unset KLEAF_SOURCE_DATE_EPOCHS to avoid polluting {kernel_build}_env.sh
-    # with unnecessary information (git metadata of unrelated projects)
     unset KLEAF_SOURCE_DATE_EPOCHS
   else
     export SOURCE_DATE_EPOCH=$(git -C ${ROOT_DIR}/${KERNEL_DIR} log -1 --pretty=%ct)
@@ -126,7 +114,6 @@ export KBUILD_BUILD_USER=build-user
 export KBUILD_BUILD_VERSION=1
 export KBUILD_GENDWARFKSYMS_STABLE=1
 
-# List of dreprecated prebuilt directories that should not be used anywhere.
 deprecated_prebuilts_paths=(
 CLANG_PREBUILT_BIN
 CLANGTOOLS_PREBUILT_BIN
@@ -137,8 +124,6 @@ LIBUFDT_PREBUILTS_BIN
 BUILDTOOLS_PREBUILT_BIN
 )
 
-# List of prebuilt directories shell variables to incorporate into PATH
-# TODO(b/164420327): Remove these once uboot usage are cleaned up.
 prebuilts_paths=(
 LINUX_GCC_CROSS_COMPILE_PREBUILTS_BIN
 LINUX_GCC_CROSS_COMPILE_ARM32_PREBUILTS_BIN
@@ -160,7 +145,6 @@ for prebuilt_bin in "${prebuilts_paths[@]}"; do
     prebuilt_bin=\${${prebuilt_bin}}
     eval prebuilt_bin="${prebuilt_bin}"
     if [ -n "${prebuilt_bin}" ]; then
-        # Mitigate dup paths
         PATH=${PATH//"${ROOT_DIR}\/${prebuilt_bin}:"}
         PATH=${ROOT_DIR}/${prebuilt_bin}:${PATH}
     fi
@@ -175,14 +159,8 @@ export HOSTCC HOSTCXX CC LD AR NM OBJCOPY OBJDUMP OBJSIZE READELF STRIP AS
 
 tool_args=()
 
-# LLVM=1 implies what is otherwise set below; it is a more concise way of
-# specifying CC=clang LD=ld.lld NM=llvm-nm OBJCOPY=llvm-objcopy <etc>, for
-# newer kernel versions.
 if [[ -n "${LLVM}" ]]; then
   tool_args+=("LLVM=1")
-  # Reset a bunch of variables that the kernel's top level Makefile does, just
-  # in case someone tries to use these binaries in this script such as in
-  # initramfs generation below.
   HOSTCC=clang
   HOSTCXX=clang++
   CC=clang
@@ -198,22 +176,18 @@ else
   if [ -n "${HOSTCC}" ]; then
     tool_args+=("HOSTCC=${HOSTCC}")
   fi
-
   if [ -n "${CC}" ]; then
     tool_args+=("CC=${CC}")
     if [ -z "${HOSTCC}" ]; then
       tool_args+=("HOSTCC=${CC}")
     fi
   fi
-
   if [ -n "${LD}" ]; then
     tool_args+=("LD=${LD}" "HOSTLD=${LD}")
   fi
-
   if [ -n "${NM}" ]; then
     tool_args+=("NM=${NM}")
   fi
-
   if [ -n "${OBJCOPY}" ]; then
     tool_args+=("OBJCOPY=${OBJCOPY}")
   fi
@@ -221,7 +195,6 @@ fi
 
 if [ -n "${LLVM_IAS}" ]; then
   tool_args+=("LLVM_IAS=${LLVM_IAS}")
-  # Reset $AS for the same reason that we reset $CC etc above.
   AS=clang
 fi
 
@@ -249,11 +222,8 @@ else
   RAMDISK_EXT="lz4"
 fi
 
-# Checks .config against the result of savedefconfig.
-# $1: source defconfig file
 function kleaf_internal_check_defconfig_minimized() {
     local source_config="$1"
-
     (cd ${OUT_DIR} && \
      make ${TOOL_ARGS} O=${OUT_DIR} savedefconfig)
     RES=0
@@ -265,7 +235,6 @@ function kleaf_internal_check_defconfig_minimized() {
 }
 export -f kleaf_internal_check_defconfig_minimized
 
-# verifies that defconfig matches the DEFCONFIG
 function check_defconfig() {
     [ "$ARCH" = "x86_64" -o "$ARCH" = "i386" ] && local ARCH=x86
     if [[ -f "${KERNEL_DIR}/arch/${ARCH}/configs/${DEFCONFIG}" ]]; then

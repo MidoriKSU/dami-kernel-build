@@ -1,8 +1,11 @@
-name: Module - Build MidoriXX
+name: Build Kernel Image
 
 on:
   workflow_call:
     inputs:
+      variant:
+        required: true
+        type: string
       source_mirror:
         required: true
         type: string
@@ -18,6 +21,10 @@ on:
       use_droidspaces:
         required: true
         type: boolean
+      use_susfs:
+        required: false
+        type: boolean
+        default: false
       build_ebpf:
         required: false
         type: boolean
@@ -45,22 +52,20 @@ jobs:
     env:
       ANDROID_VERSION: 'android16'
       KERNEL_VERSION: '6.12'
-      ASB_DATE: ${{ inputs.asb_date }}
       R_SUFFIX: ${{ inputs.r_version != 'none' && format('_{0}', inputs.r_version) || '' }}
       DS_SUFFIX: ${{ inputs.use_droidspaces && '-Droidspaces' || '' }}
+      SUSFS_SUFFIX: ${{ inputs.use_susfs && '-SuSFS' || '' }}
+      PREFIX: ${{ inputs.variant }}
 
     steps:
-      - name: Checkout Workflow Repo (For Patches)
+      - name: Checkout Workflow Repository
         uses: actions/checkout@v6
         with:
           clean: false
-          submodules: true
 
       - name: Free Disk Space & Install Dependencies
         run: |
-          (
-            sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL || true
-          ) &
+          (sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL || true) &
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             binutils python-is-python3 libssl-dev libelf-dev libdw-dev bison flex bc aria2
@@ -69,7 +74,7 @@ jobs:
       - name: Initialize Workspace & Toolchains
         run: |
           mkdir -p kernel_workspace && cd kernel_workspace
-          KERNEL_TAR="${ANDROID_VERSION}-${KERNEL_VERSION}-${ASB_DATE}${R_SUFFIX}.tar.gz"
+          KERNEL_TAR="${ANDROID_VERSION}-${KERNEL_VERSION}-${{ inputs.asb_date }}${R_SUFFIX}.tar.gz"
           MIDORI_MIRROR="https://github.com/MidoriKSU/dami-kernel-build/releases/download/1.0"
           GOOGLE_MIRROR="https://android.googlesource.com/kernel/common/+archive/refs/tags"
           KERNEL_BASE_URL=$([ "${{ inputs.source_mirror }}" == "google" ] && echo "$GOOGLE_MIRROR" || echo "$MIDORI_MIRROR")
@@ -81,7 +86,39 @@ jobs:
           wait
           sed -i 's/ -dirty//g' common/scripts/setlocalversion
 
+      # ---------- Variant: MidoriSU ----------
+      - name: Clone KernelSU (MidoriSU)
+        if: inputs.variant == 'MidoriSU'
+        run: |
+          cd kernel_workspace/common
+          git clone --depth=1 --branch=main https://github.com/midori01/KernelSU.git KernelSU
+          ln -sf ../KernelSU/kernel drivers/kernelsu
+          grep -q "kernelsu" drivers/Makefile || echo 'obj-$(CONFIG_KSU) += kernelsu/' >> drivers/Makefile
+          grep -q "drivers/kernelsu/Kconfig" drivers/Kconfig || sed -i '/endmenu/i source "drivers/kernelsu/Kconfig"' drivers/Kconfig
+          cp -r KernelSU/uapi KernelSU/kernel/uapi 2>/dev/null || true
+          echo 'ccflags-y += -I$(srctree)/drivers/kernelsu' >> drivers/kernelsu/Makefile
+          mkdir -p include/uapi
+          cp -f KernelSU/kernel/policy/*.h include/uapi/ 2>/dev/null || true
+          cp -f KernelSU/kernel/policy/*.h include/ 2>/dev/null || true
+          cp -f KernelSU/kernel/include/*.h include/ 2>/dev/null || true
+          cp -f KernelSU/kernel/uapi/*.h include/uapi/ 2>/dev/null || true
+
+      - name: Setup SuSFS (MidoriSU only)
+        if: inputs.variant == 'MidoriSU' && inputs.use_susfs
+        run: |
+          cd kernel_workspace/common
+          SUSFS_DIR="${{ github.workspace }}/susfs4ksu"
+          git clone --depth=1 --branch=gki-android16-6.12 https://gitlab.com/simonpunk/susfs4ksu "$SUSFS_DIR"
+          cp "$SUSFS_DIR/kernel_patches/fs/susfs.c" fs/
+          cp "$SUSFS_DIR/kernel_patches/include/linux/susfs.h" include/linux/
+          cp "$SUSFS_DIR/kernel_patches/include/linux/susfs_def.h" include/linux/
+          patch -p1 < "$SUSFS_DIR/kernel_patches/50_add_susfs_in_gki-android16-6.12.patch"
+          cd KernelSU
+          patch -p1 -l < "${{ github.workspace }}/.github/patches/10_enable_susfs_for_ksu.patch"
+
+      # ---------- Variant: MidoriXX ----------
       - name: Setup MidoriXX Variant
+        if: inputs.variant == 'MidoriXX'
         run: |
           cd kernel_workspace/common
           git clone --depth=1 --branch=main https://github.com/MidoriKSU/KernelSU.git KernelSU
@@ -91,12 +128,14 @@ jobs:
           grep -q "kernelsu" drivers/Makefile || echo 'obj-$(CONFIG_KSU) += kernelsu/' >> drivers/Makefile
           grep -q "kernelsu" drivers/Kconfig || sed -i '/endmenu/i source "drivers/kernelsu/Kconfig"' drivers/Kconfig
 
-      - name: "Patching: MidoriXX (Security & Scope Hooks)"
+      - name: Apply MidoriXX Security Patches
+        if: inputs.variant == 'MidoriXX'
         run: |
           cd kernel_workspace/common
           patch -p1 -l --fuzz=3 < "${{ github.workspace }}/.github/patches/manual-security-hooks-v1.9.patch"
           patch -p1 -l --fuzz=3 < "${{ github.workspace }}/.github/patches/scope-min-manual-hooks-v2.0.patch"
 
+      # ---------- Droidspaces (common) ----------
       - name: Integrate Droidspaces Support
         if: inputs.use_droidspaces
         run: |
@@ -105,32 +144,36 @@ jobs:
           chmod +x "${{ github.workspace }}/.github/scripts/_setup_droidspaces.sh"
           bash "${{ github.workspace }}/.github/scripts/_setup_droidspaces.sh"
 
+      # ---------- Config Injection ----------
       - name: Inject Kernel Configs
         uses: ./.github/actions/kernel-config
         with:
           defconfig_path: "kernel_workspace/common/arch/arm64/configs/gki_defconfig"
           build_config_path: "kernel_workspace/common/build.config.gki"
-          variant: "MidoriXX"
-          enable_susfs: "false"
+          variant: ${{ inputs.variant }}
+          enable_susfs: ${{ inputs.use_susfs }}
           localversion: ${{ inputs.kernel_localversion }}
           use_droidspaces: ${{ inputs.use_droidspaces }}
 
+      # ---------- Compilation (minimal) ----------
       - name: Compile Kernel
         run: |
           cd kernel_workspace/common
           cp -f "${{ github.workspace }}/.github/scripts/_setup_env.sh" ./
           source "./_setup_env.sh"
-          
+
+          # Only override spoof metadata; everything else is handled by _setup_env.sh
           export SOURCE_DATE_EPOCH="${{ inputs.build_epoch }}"
           export KBUILD_BUILD_TIMESTAMP="${{ inputs.build_timestamp }}"
           export KBUILD_BUILD_HOST="${{ inputs.build_host }}"
           export KBUILD_BUILD_USER="${{ inputs.build_user }}"
-          
+
           make -j$(nproc --all) O=out ${TOOL_ARGS} gki_defconfig
           make -j$(nproc --all) O=out ${TOOL_ARGS} Image
 
+      # ---------- vmlinux for eBPF ----------
       - name: Export vmlinux for eBPF
-        if: inputs.build_ebpf == true
+        if: inputs.build_ebpf
         run: |
           cd kernel_workspace/common/out
           if [ -f "vmlinux" ]; then
@@ -138,29 +181,28 @@ jobs:
           fi
 
       - name: Upload vmlinux Artifact
-        if: inputs.build_ebpf == true
+        if: inputs.build_ebpf
         uses: actions/upload-artifact@v4
         with:
-          name: vmlinux-MidoriXX${{env.DS_SUFFIX}}
+          name: vmlinux-${{ env.PREFIX }}${{ env.SUSFS_SUFFIX }}${{ env.DS_SUFFIX }}
           path: kernel_workspace/common/out/vmlinux.zst
           retention-days: 1
 
+      # ---------- Packaging ----------
       - name: Package & Boot-Ready Check
         run: |
           cd kernel_workspace
           IMAGE="./common/out/arch/arm64/boot/Image"
-          [ -f "$IMAGE" ] || (echo "Binary Missing!" && exit 1)
+          [ -f "$IMAGE" ] || (echo "Binary Missing!" && exit 1) 
           git clone https://github.com/midori01/AnyKernel3 -b xiaomi --depth=1
           cp "$IMAGE" ./AnyKernel3/ && cd AnyKernel3
           rm -rf .git
-          ZIP_NAME="MidoriXX_Kernel-${KERNEL_VERSION}.${{ inputs.sub_level }}${R_SUFFIX}${DS_SUFFIX}.zip"
-          ARTIFACT_NAME="Kernel-MidoriXX${DS_SUFFIX}${R_SUFFIX}"
+          ZIP_NAME="${PREFIX}_Kernel-${KERNEL_VERSION}.${{ inputs.sub_level }}${R_SUFFIX}${SUSFS_SUFFIX}${DS_SUFFIX}.zip"
           zip -r9 "../$ZIP_NAME" *
           echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
-          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_ENV
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v7.0.0
         with:
-          name: ${{ env.ARTIFACT_NAME }}
+          name: Kernel-${{ env.PREFIX }}${{ env.SUSFS_SUFFIX }}${{ env.DS_SUFFIX }}${{ env.R_SUFFIX }}
           path: kernel_workspace/${{ env.ZIP_NAME }}
