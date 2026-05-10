@@ -1,4 +1,4 @@
-name: Build Kernel
+name: Build and Release
 
 on:
   workflow_dispatch:
@@ -120,7 +120,7 @@ jobs:
           CONFIG_FILE=".github/config/kernel_versions.json"
           CONFIG=$(jq -c '.["'$SUB_LEVEL'"]' "$CONFIG_FILE")
           if [ "$CONFIG" == "null" ] || [ -z "$CONFIG" ]; then
-            echo "::error::Sub level $SUB_LEVEL is not defined in $CONFIG_FILE!"
+            echo "::error::Sublevel $SUB_LEVEL is not defined in $CONFIG_FILE!"
             exit 1
           fi
           ASB_DATE=$(echo "$CONFIG" | jq -r '.asb_date')
@@ -129,7 +129,7 @@ jobs:
           if [ "$IS_SUPPORTED" != "null" ]; then
             FINAL_R="$INPUT_R"
           else
-            echo "::warning::Revision '$INPUT_R' is NOT supported for sub_level $SUB_LEVEL. Fallback to '$DEFAULT_R'."
+            echo "::warning::Revision '$INPUT_R' is NOT supported for Sublevel $SUB_LEVEL. Fallback to '$DEFAULT_R'."
             FINAL_R="$DEFAULT_R"
           fi
           echo "asb_date=$ASB_DATE" >> $GITHUB_OUTPUT
@@ -227,7 +227,21 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release download --repo midori01/KernelSU --pattern "*.apk" --dir release_zips
-    
+
+      - name: Download KSU Toolkit Module
+        id: download_toolkit
+        run: |
+          PREVIEW_URL="https://nightly.link/backslashxx/ksu_toolkit/workflows/module/master?preview"
+          DOWNLOAD_URL=$(curl -sL "$PREVIEW_URL" | grep -oP 'https://nightly\.link/backslashxx/ksu_toolkit/workflows/module/master/ksu_toolkit-\d+\.zip' | head -n 1)
+          if [ -z "$DOWNLOAD_URL" ]; then
+            echo "::error::Failed to extract KSU Toolkit download link" >&2
+            exit 1
+          fi
+          echo "Downloading: $DOWNLOAD_URL"
+          TOOLKIT_FILENAME=$(basename "$DOWNLOAD_URL")
+          echo "toolkit_filename=$TOOLKIT_FILENAME" >> $GITHUB_OUTPUT
+          curl --fail -L -o "release_zips/${TOOLKIT_FILENAME}" "$DOWNLOAD_URL"
+
       - name: Publish Release
         uses: softprops/action-gh-release@v2
         with:
@@ -244,7 +258,8 @@ jobs:
             - **IPSET**: ✅
             - **SuSFS**: ${{ inputs.enable_susfs && '✅ `(*-SuSFS)`' || '❌' }}
             - **Docker**: ${{ inputs.use_droidspaces && '✅ `(*-Droidspaces)`' || '❌' }}
-            - **eBPF (Scene Hider)**: ${{ inputs.build_scene_hider && '✅' || '❌' }}
+            - **eBPF (Scene Hider)**: ${{ inputs.build_scene_hider && '✅ `(ScenePortHider-eBPF.zip)`' || '❌' }}
+            - **KSU Toolkit**: ✅ `(${{ steps.download_toolkit.outputs.toolkit_filename }})`
           files: |
             release_zips/*.zip
             release_zips/*.apk

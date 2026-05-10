@@ -1,4 +1,4 @@
-name: Build Kernel Image
+name: Module - Build Kernel Image
 
 on:
   workflow_call:
@@ -135,7 +135,7 @@ jobs:
           patch -p1 -l --fuzz=3 < "${{ github.workspace }}/.github/patches/manual-security-hooks-v1.9.patch"
           patch -p1 -l --fuzz=3 < "${{ github.workspace }}/.github/patches/scope-min-manual-hooks-v2.0.patch"
 
-      # ---------- Droidspaces (common) ----------
+      # ---------- Droidspaces ----------
       - name: Integrate Droidspaces Support
         if: inputs.use_droidspaces
         run: |
@@ -155,7 +155,7 @@ jobs:
           localversion: ${{ inputs.kernel_localversion }}
           use_droidspaces: ${{ inputs.use_droidspaces }}
 
-      # ---------- Compilation (minimal) ----------
+      # ---------- Compilation ----------
       - name: Compile Kernel
         run: |
           cd kernel_workspace/common
