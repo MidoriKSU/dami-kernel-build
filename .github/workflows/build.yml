@@ -80,6 +80,23 @@ on:
         required: true
         default: '1764155774'
         type: string
+      clang_version:
+        description: 'Compiler Version'
+        required: true
+        default: 'clang-r536225'
+        type: choice
+        options:
+          - clang-r536225
+          - clang-r547379
+      rust_version:
+        description: 'Rust Version'
+        required: true
+        default: 'rust-1.82.0'
+        type: choice
+        options:
+          - rust-1.82.0
+          - rust-1.82.0.p1
+          - rust-1.83.0
 
 permissions:
   contents: write
@@ -158,6 +175,8 @@ jobs:
       build_timestamp: ${{ inputs.build_timestamp }}
       build_user: ${{ inputs.build_user }}
       build_host: ${{ inputs.build_host }}
+      clang_version: ${{ inputs.clang_version }}
+      rust_version: ${{ inputs.rust_version }}
 
   build_midorixx:
     name: "MidoriXX (DS: ${{ matrix.droidspaces }})"
@@ -181,6 +200,8 @@ jobs:
       build_timestamp: ${{ inputs.build_timestamp }}
       build_user: ${{ inputs.build_user }}
       build_host: ${{ inputs.build_host }}
+      clang_version: ${{ inputs.clang_version }}
+      rust_version: ${{ inputs.rust_version }}
 
   build_scene_hider:
     name: "Scene Port Hider (eBPF)"
@@ -250,6 +271,8 @@ jobs:
           body: |
             - **Kernel Source**: [${{ env.MIRROR_NAME }}](${{ env.BASE_URL }}/android16-6.12-${{ needs.setup.outputs.asb_date }}${{ env.R_SUFFIX }}.tar.gz)
             - **Kernel Version**: `android16-6.12.${{ inputs.sub_level }}${{ env.R_SUFFIX }}`
+            - **Compiler Version**: `${{ inputs.clang_version }}`
+            - **Rust Version**: `${{ inputs.rust_version }}`
             - **Kernel Name (Spoofed)**: `6.12.${{ inputs.sub_level }}${{ inputs.kernel_localversion }}`
             - **Build Time (Spoofed)**: `${{ inputs.build_timestamp }}`
             - **Builder (Spoofed)**: `${{ inputs.build_user }}@${{ inputs.build_host }}`

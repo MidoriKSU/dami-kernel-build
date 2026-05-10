@@ -22,13 +22,11 @@ on:
         required: true
         type: boolean
       use_susfs:
-        required: false
+        required: true
         type: boolean
-        default: false
       build_ebpf:
-        required: false
+        required: true
         type: boolean
-        default: false
       kernel_localversion:
         required: true
         type: string
@@ -42,6 +40,12 @@ on:
         required: true
         type: string
       build_host:
+        required: true
+        type: string
+      clang_version:
+        required: true
+        type: string
+      rust_version:
         required: true
         type: string
 
@@ -78,11 +82,13 @@ jobs:
           MIDORI_MIRROR="https://github.com/MidoriKSU/dami-kernel-build/releases/download/1.0"
           GOOGLE_MIRROR="https://android.googlesource.com/kernel/common/+archive/refs/tags"
           KERNEL_BASE_URL=$([ "${{ inputs.source_mirror }}" == "google" ] && echo "$GOOGLE_MIRROR" || echo "$MIDORI_MIRROR")
+          CLANG_TAR="${{ inputs.clang_version }}.tar.gz"
+          RUST_TAR="${{ inputs.rust_version }}.tar.gz"
           (aria2c -s16 -x16 -k1M "$KERNEL_BASE_URL/$KERNEL_TAR" -o common.tar.gz && mkdir -p common && tar -xzf common.tar.gz -C common && rm common.tar.gz) &
-          (aria2c -s16 -x16 -k1M "$MIDORI_MIRROR/clang-r536225.tar.gz" -o clang.tar.gz && mkdir -p clang && tar -xzf clang.tar.gz -C clang && rm clang.tar.gz) &
+          (aria2c -s16 -x16 -k1M "$MIDORI_MIRROR/$CLANG_TAR" -o clang.tar.gz && mkdir -p clang && tar -xzf clang.tar.gz -C clang && rm clang.tar.gz) &
           (aria2c -s16 -x16 -k1M "$MIDORI_MIRROR/build-tools.tar.gz" -o build-tools.tar.gz && mkdir -p build-tools && tar -xzf build-tools.tar.gz -C build-tools && rm build-tools.tar.gz) &
           (aria2c -s16 -x16 -k1M "$MIDORI_MIRROR/clang-tools.tar.gz" -o clang-tools.tar.gz && mkdir -p clang-tools && tar -xzf clang-tools.tar.gz -C clang-tools && rm clang-tools.tar.gz) &
-          (aria2c -s16 -x16 -k1M "$MIDORI_MIRROR/rust-1.82.0.tar.gz" -o rust.tar.gz && mkdir -p rust && tar -xzf rust.tar.gz -C rust && rm rust.tar.gz) &
+          (aria2c -s16 -x16 -k1M "$MIDORI_MIRROR/$RUST_TAR" -o rust.tar.gz && mkdir -p rust && tar -xzf rust.tar.gz -C rust && rm rust.tar.gz) &
           wait
           sed -i 's/ -dirty//g' common/scripts/setlocalversion
 
