@@ -247,6 +247,14 @@ jobs:
           echo "toolkit_filename=$TOOLKIT_FILENAME" >> $GITHUB_OUTPUT
           curl --fail -L -o "release_zips/${TOOLKIT_FILENAME}" "$DOWNLOAD_URL"
 
+      - name: Download SuSFS module
+        if: inputs.enable_susfs == true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download --repo sidex15/susfs4ksu-module --pattern "*.zip" --dir release_zips
+          ls -l release_zips/*.zip
+
       - name: Publish Release
         uses: softprops/action-gh-release@v3
         with:
