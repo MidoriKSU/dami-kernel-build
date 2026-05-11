@@ -45,6 +45,11 @@ on:
         required: true
         default: true
         type: boolean
+      susfs_commit:
+        description: 'SuSFS Commit hash (Leave blank for latest)'
+        required: false
+        default: ''
+        type: string
       use_droidspaces:
         description: 'Droidspaces'
         required: true
@@ -193,6 +198,7 @@ jobs:
       r_version: ${{ needs.setup.outputs.r_version }}
       use_droidspaces: ${{ matrix.droidspaces }}
       use_susfs: ${{ matrix.susfs }}
+      susfs_commit: ${{ inputs.susfs_commit }}
       build_ebpf: ${{ inputs.build_scene_hider }}
       kernel_localversion: ${{ inputs.kernel_localversion }}
       build_epoch: ${{ inputs.build_epoch }}
