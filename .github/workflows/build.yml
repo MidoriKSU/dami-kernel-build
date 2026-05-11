@@ -6,11 +6,11 @@ on:
       source_mirror:
         description: 'Kernel Source'
         required: true
-        default: 'midori'
+        default: 'google'
         type: choice
         options:
-          - midori
           - google
+          - midori
       sub_level:
         description: 'Kernel Sublevel'
         required: true
@@ -107,30 +107,56 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       release_tag: ${{ steps.config.outputs.release_tag }}
-      ds_matrix: ${{ steps.config.outputs.ds_matrix }}
-      susfs_matrix: ${{ steps.config.outputs.susfs_matrix }}
+      build_matrix: ${{ steps.config.outputs.build_matrix }}
       asb_date: ${{ steps.parse_config.outputs.asb_date }}
       r_version: ${{ steps.parse_config.outputs.r_version }}
+      r_suffix: ${{ steps.config.outputs.r_suffix }}
+      source_base_url: ${{ steps.config.outputs.source_base_url }}
+      mirror_name: ${{ steps.config.outputs.mirror_name }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v6
 
       - id: config
+        name: Prepare build matrix and metadata
         run: |
-          echo "release_tag=$(date +'%y%m%d%H%M')" >> $GITHUB_OUTPUT
-          if [ "${{ inputs.use_droidspaces }}" == "true" ]; then
-            echo 'ds_matrix=[false, true]' >> $GITHUB_OUTPUT
+          echo "release_tag=build-$(date +'%y%m%d%H%M%S')" >> $GITHUB_OUTPUT
+          if [ "${{ inputs.r_version }}" != "none" ]; then
+            echo "r_suffix=_${{ inputs.r_version }}" >> $GITHUB_OUTPUT
           else
-            echo 'ds_matrix=[false]' >> $GITHUB_OUTPUT
+            echo "r_suffix=" >> $GITHUB_OUTPUT
           fi
-          if [ "${{ inputs.enable_susfs }}" == "true" ]; then
-            echo 'susfs_matrix=[false, true]' >> $GITHUB_OUTPUT
+          if [ "${{ inputs.source_mirror }}" == "google" ]; then
+            echo "source_base_url=https://android.googlesource.com/kernel/common/+archive/refs/tags" >> $GITHUB_OUTPUT
+            echo "mirror_name=Google Official" >> $GITHUB_OUTPUT
           else
-            echo 'susfs_matrix=[false]' >> $GITHUB_OUTPUT
+            echo "source_base_url=https://github.com/MidoriKSU/dami-kernel-build/releases/download/1.0" >> $GITHUB_OUTPUT
+            echo "mirror_name=Midori Mirror" >> $GITHUB_OUTPUT
           fi
 
+          MATRIX='{"include":[]}'
+          if [ "${{ inputs.ksu_variant }}" == "all" ] || [ "${{ inputs.ksu_variant }}" == "MidoriSU" ]; then
+            DS_LIST="false"
+            [ "${{ inputs.use_droidspaces }}" == "true" ] && DS_LIST="false true"
+            SUS_LIST="false"
+            [ "${{ inputs.enable_susfs }}" == "true" ] && SUS_LIST="false true"
+            for DS in $DS_LIST; do
+              for SUS in $SUS_LIST; do
+                MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"variant":"MidoriSU","droidspaces":'$DS',"susfs":'$SUS'}]')
+              done
+            done
+          fi
+          if [ "${{ inputs.ksu_variant }}" == "all" ] || [ "${{ inputs.ksu_variant }}" == "MidoriXX" ]; then
+            DS_LIST="false"
+            [ "${{ inputs.use_droidspaces }}" == "true" ] && DS_LIST="false true"
+            for DS in $DS_LIST; do
+              MATRIX=$(echo "$MATRIX" | jq -c '.include += [{"variant":"MidoriXX","droidspaces":'$DS',"susfs":false}]')
+            done
+          fi
+          echo "build_matrix=$MATRIX" >> $GITHUB_OUTPUT
+
       - id: parse_config
-        name: Validate and Resolve Kernel Config
+        name: Validate and resolve kernel config
         run: |
           SUB_LEVEL="${{ inputs.sub_level }}"
           INPUT_R="${{ inputs.r_version }}"
@@ -152,17 +178,15 @@ jobs:
           echo "asb_date=$ASB_DATE" >> $GITHUB_OUTPUT
           echo "r_version=$FINAL_R" >> $GITHUB_OUTPUT
 
-  build_midorisu:
-    name: "MidoriSU (DS: ${{ matrix.droidspaces }} | SuSFS: ${{ matrix.susfs }})"
+  build:
+    name: "${{ matrix.variant }} (DS: ${{ matrix.droidspaces }}${{ matrix.susfs && format(' SuSFS: {0}', matrix.susfs) || '' }})"
     needs: setup
-    if: inputs.ksu_variant == 'all' || inputs.ksu_variant == 'MidoriSU'
+    if: needs.setup.outputs.build_matrix != '{"include":[]}'
     strategy:
-      matrix:
-        droidspaces: ${{ fromJson(needs.setup.outputs.ds_matrix) }}
-        susfs: ${{ fromJson(needs.setup.outputs.susfs_matrix) }}
+      matrix: ${{ fromJson(needs.setup.outputs.build_matrix) }}
     uses: ./.github/workflows/build-kernel.yml
     with:
-      variant: 'MidoriSU'
+      variant: ${{ matrix.variant }}
       source_mirror: ${{ inputs.source_mirror }}
       sub_level: ${{ inputs.sub_level }}
       asb_date: ${{ needs.setup.outputs.asb_date }}
@@ -178,71 +202,31 @@ jobs:
       clang_version: ${{ inputs.clang_version }}
       rust_version: ${{ inputs.rust_version }}
 
-  build_midorixx:
-    name: "MidoriXX (DS: ${{ matrix.droidspaces }})"
-    needs: setup
-    if: inputs.ksu_variant == 'all' || inputs.ksu_variant == 'MidoriXX'
-    strategy:
-      matrix:
-        droidspaces: ${{ fromJson(needs.setup.outputs.ds_matrix) }}
-    uses: ./.github/workflows/build-kernel.yml
-    with:
-      variant: 'MidoriXX'
-      source_mirror: ${{ inputs.source_mirror }}
-      sub_level: ${{ inputs.sub_level }}
-      asb_date: ${{ needs.setup.outputs.asb_date }}
-      r_version: ${{ needs.setup.outputs.r_version }}
-      use_droidspaces: ${{ matrix.droidspaces }}
-      use_susfs: false
-      build_ebpf: ${{ inputs.build_scene_hider }}
-      kernel_localversion: ${{ inputs.kernel_localversion }}
-      build_epoch: ${{ inputs.build_epoch }}
-      build_timestamp: ${{ inputs.build_timestamp }}
-      build_user: ${{ inputs.build_user }}
-      build_host: ${{ inputs.build_host }}
-      clang_version: ${{ inputs.clang_version }}
-      rust_version: ${{ inputs.rust_version }}
-
   build_scene_hider:
     name: "Scene Port Hider (eBPF)"
-    needs: [setup, build_midorisu, build_midorixx]
-    if: |
-      always() && 
-      inputs.build_scene_hider == true &&
-      !contains(needs.*.result, 'failure') && 
-      !contains(needs.*.result, 'cancelled')
+    needs: [setup, build]
+    if: always() && inputs.build_scene_hider && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     uses: ./.github/workflows/build-ebpf.yml
 
   release:
-    needs: [setup, build_midorisu, build_midorixx, build_scene_hider]
-    if: |
-      always() && 
-      inputs.create_release == true &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled')
+    needs: [setup, build, build_scene_hider]
+    if: always() && inputs.create_release && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    env:
-      R_SUFFIX: ${{ needs.setup.outputs.r_version != 'none' && format('_{0}', needs.setup.outputs.r_version) || '' }}
-      BASE_URL: ${{ inputs.source_mirror == 'google' && 'https://android.googlesource.com/kernel/common/+archive/refs/tags' || 'https://github.com/MidoriKSU/dami-kernel-build/releases/download/1.0' }}
-      MIRROR_NAME: ${{ inputs.source_mirror == 'google' && 'Google Official' || 'Midori Mirror' }}
-
     steps:
       - uses: actions/checkout@v6
-      
+
       - uses: actions/download-artifact@v8
         with:
           pattern: 'Kernel-*'
           path: release_zips
           merge-multiple: true
-          
+
       - uses: actions/download-artifact@v8
         if: inputs.build_scene_hider == true
         with:
           name: ScenePortHider-eBPF
           path: release_zips
-          
+
       - name: Download MidoriSU Manager APK
         env:
           GH_TOKEN: ${{ github.token }}
@@ -263,14 +247,22 @@ jobs:
           echo "toolkit_filename=$TOOLKIT_FILENAME" >> $GITHUB_OUTPUT
           curl --fail -L -o "release_zips/${TOOLKIT_FILENAME}" "$DOWNLOAD_URL"
 
+      - name: Download SuSFS module
+        if: inputs.enable_susfs == true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download --repo sidex15/susfs4ksu-module --pattern "*.zip" --dir release_zips
+          ls -l release_zips/*.zip
+
       - name: Publish Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: "${{ needs.setup.outputs.release_tag }}"
-          name: "Kernel Midori Build (${{ needs.setup.outputs.release_tag }})"
+          name: "Midori Kernel (${{ needs.setup.outputs.release_tag }})"
           body: |
-            - **Kernel Source**: [${{ env.MIRROR_NAME }}](${{ env.BASE_URL }}/android16-6.12-${{ needs.setup.outputs.asb_date }}${{ env.R_SUFFIX }}.tar.gz)
-            - **Kernel Version**: `android16-6.12.${{ inputs.sub_level }}${{ env.R_SUFFIX }}`
+            - **Kernel Source**: [${{ needs.setup.outputs.mirror_name }}](${{ needs.setup.outputs.source_base_url }}/android16-6.12-${{ needs.setup.outputs.asb_date }}${{ needs.setup.outputs.r_suffix }}.tar.gz)
+            - **Kernel Version**: `android16-6.12.${{ inputs.sub_level }}${{ needs.setup.outputs.r_suffix }}`
             - **Compiler Version**: `${{ inputs.clang_version }}`
             - **Rust Version**: `${{ inputs.rust_version }}`
             - **Kernel Name (Spoofed)**: `6.12.${{ inputs.sub_level }}${{ inputs.kernel_localversion }}`
