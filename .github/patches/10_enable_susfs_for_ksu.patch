@@ -1,6 +1,6 @@
 From: Midori <lv@lvlv.lv>
-Date: Sun, 03 May 2026 23:00:00 +0900
-Subject: [PATCH] Fix missing SU Log for MidoriSU with SUSFS
+Date: Mon, 11 May 2026 12:30:00 +0900
+Subject: [PATCH] Fix offsets for latest MidoriSU/KowSU
 
 ---
 diff --git a/kernel/Kbuild b/kernel/Kbuild
@@ -954,10 +954,10 @@ index 17f9b826..be81e626 100644
  
  static inline int startswith(char *s, char *prefix)
 diff --git a/kernel/policy/allowlist.c b/kernel/policy/allowlist.c
-index d5eac53f..0da06094 100644
+index 27186264..81faedf2 100644
 --- a/kernel/policy/allowlist.c
 +++ b/kernel/policy/allowlist.c
-@@ -306,14 +306,6 @@ bool ksu_uid_should_umount(uid_t uid)
+@@ -308,14 +308,6 @@ bool ksu_uid_should_umount(uid_t uid)
  {
      struct app_profile *profile;
      bool res;
@@ -1451,7 +1451,7 @@ index 25933bb6..ffe0d2c0 100644
 -    unregister_kprobe(&input_event_kp);
  }
 diff --git a/kernel/selinux/rules.c b/kernel/selinux/rules.c
-index 2fabb71a..bb259e5d 100644
+index c95e1284..7562ab0a 100644
 --- a/kernel/selinux/rules.c
 +++ b/kernel/selinux/rules.c
 @@ -128,8 +128,14 @@ void apply_kernelsu_rules()
