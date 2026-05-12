@@ -1,46 +1,30 @@
-<div align="center">
+# 📦 Android Kernel Source & Toolchain
 
-# 🌀 Nezha KSU Workflow
+![OS - Android](https://img.shields.io/badge/OS-Android-3DDC84?style=flat-square&logo=android&logoColor=white)
+![Kernel - Linux](https://img.shields.io/badge/Kernel-Linux-FCC624?style=flat-square&logo=linux&logoColor=black)
+![Build - GitHub Actions](https://img.shields.io/badge/Build-GitHub_Actions-2088FF?style=flat-square&logo=github-actions&logoColor=white)
 
-![Android](https://img.shields.io/badge/Android-16-3DDC84?style=for-the-badge&logo=android&logoColor=white)
-![Kernel](https://img.shields.io/badge/Kernel-GKI_6.12.23-2F363D?style=for-the-badge&logo=linux&logoColor=white)
-![Architecture](https://img.shields.io/badge/Arch-arm64--v8a-blue?style=for-the-badge)
+> **Note:** This repository serves a specific and dedicated purpose within our Android kernel build ecosystem.
 
-*Automated GitHub Actions pipeline for building GKI kernels targeting the **Snapdragon 8 Elite Gen 5 (SM8850)**.*
+## 📌 About This Repository
 
-</div>
+This repository is **strictly maintained** for the following purposes:
 
----
+*   🧩 **Kernel Source:** Storing the Android kernel source tree.
+*   🛠️ **Toolchain:** Housing the necessary compilers (e.g., Clang/GCC) and toolchains required for compilation.
+*   ⚙️ **Temporary Workflows:** Executing and testing temporary GitHub Actions build workflows.
 
-## 🚀 Overview
-This repository provides a highly modular, dispatcher-based workflow that builds multiple **KernelSU** variants from a single trigger. Each variant is fully isolated in its own workflow file, ensuring independent maintainability, simplified debugging, and seamless future scalability.
-
----
-
-## 📱 Target Device Info
-
-| Property | Specification |
-| :--- | :--- |
-| **Device** | `Xiaomi 17 Ultra (Nezha)` |
-| **SoC** | `Snapdragon 8 Elite Gen 5 (SM8850)` |
-| **Android** | `16 (Baklava)` |
-| **Kernel** | `android16-6.12-2025-06 (6.12.23)` |
-| **Architecture** | `arm64-v8a` |
-| **Compiler** | `LLVM Clang 19 (r536225)` |
-| **Rust** | `1.82.0` |
+⚠️ *Please note that this is not the primary repository for the complete build execution or user-facing documentation.*
 
 ---
 
-## 📦 Build Variants
+## 🚀 Build Instructions
 
-| Variant | Source | SuSFS | Docker |
-| :--- | :--- | :--- | :--- |
-| `MidoriSU` | [midori01/KernelSU](https://github.com/midori01/KernelSU) | ❌ | ❌ |
-| `MidoriSU-Droidspaces` | [midori01/KernelSU](https://github.com/midori01/KernelSU) | ❌ | ✅ |
-| `MidoriSU-SuSFS` | [midori01/KernelSU](https://github.com/midori01/KernelSU) | ✅ | ❌ |
-| `MidoriSU-SuSFS-Droidspaces` | [midori01/KernelSU](https://github.com/midori01/KernelSU) | ✅ | ✅ |
-| `MidoriXX` | [MidoriKSU/KernelSU](https://github.com/MidoriKSU/KernelSU) | ❌ | ❌ |
-| `MidoriXX-Droidspaces` | [MidoriKSU/KernelSU](https://github.com/MidoriKSU/KernelSU) | ❌ | ✅ |
+If you are looking for the complete, step-by-step Android kernel build guide or want to understand the full compilation process (such as KernelSU integration), please visit our dedicated workflow repositories:
 
-> [!TIP]
-> **Matrix Build Magic:** Triggering the workflow with both `use_droidspaces` and `enable_susfs` options enabled will automatically leverage GitHub Actions matrix builds to compile and release all applicable standard, `-susfs`, and `-droidspaces` variants simultaneously (up to 6 variants in a single run!).
+- 👉 **[yapixel/popsicle_ksu_workflow](https://github.com/yapixel/popsicle_ksu_workflow)**
+- 👉 **[midori01/nezha_ksu_workflow](https://github.com/midori01/nezha_ksu_workflow)**
+
+All detailed documentation, workflow scripts, and deployment configurations are maintained there.
+
+---
